@@ -1,40 +1,39 @@
 package main
 
-type hlTypeKind int
+type hxitId int
 
-// HL Type
-//go:generate stringer -type=hlTypeKind
+// Haxe Intermediate Type
+//go:generate stringer -type=hxitId
 const (
-	HVOID hlTypeKind = iota
-	HUI8
-	HUI16
-	HI32
-	HI64
-	HF32
-	HF64
-	HBOOL
-	HBYTES
-	HDYN
-	HFUN
-	HOBJ
-	HARRAY
-	HTYPE
-	HREF
-	HVIRTUAL
-	HDYNOBJ
-	HABSTRACT
-	HENUM
-	HNULL
-	HLAST
+	hxitVoid hxitId = iota
+	hxitUi8
+	hxitUi16
+	hxitI32
+	hxitI64
+	hxitF32
+	hxitF64
+	hxitBool
+	hxitBytes
+	hxitDyn
+	hxitFun
+	hxitObj
+	hxitArray
+	hxitType
+	hxitRef
+	hxitVirtual
+	hxitDynobj
+	hxitAbstract
+	hxitEnum
+	hxitNull
+	hxitLast
 
-	_H_FORCE_INT hlTypeKind = 0x7FFFFFFF
+	_H_FORCE_INT hxitId = 0x7FFFFFFF
 )
 
-type hlType interface {
-	//Kind() hlTypeKind
-	//String() string
+type hxType interface {
+	Kind() string
 	/*
-		hl_type_kind kind;
+		hl_type_typeId typeId;
 		union {
 			const uchar *abs_name;
 			hl_type_fun *fun;
@@ -48,43 +47,24 @@ type hlType interface {
 	*/
 }
 
-type hlTypeGeneric struct {
-	kind hlTypeKind
+type hxTypeBase struct {
+	typeId hxitId
 }
 
-type hlTypeVoid struct {
+func (t *hxTypeBase) Kind() string {
+	return string(t.typeId)
 }
 
-type hlTypeUI8 struct {
+type hxTypeGeneric struct {
+	hxTypeBase
+	typeId hxitId
 }
 
-type hlTypeUI16 struct {
-}
-
-type hlTypeI32 struct {
-}
-
-type hlTypeI64 struct {
-}
-
-type hlTypeF32 struct {
-}
-
-type hlTypeF64 struct {
-}
-
-type hlTypeBool struct {
-}
-
-type hlTypeBytes struct {
-}
-
-type hlTypeDyn struct {
-}
-
-type hlTypeFun struct {
-	args []int
-	ret  int
+type hxTypeFun struct {
+	hxTypeBase
+	typeId hxitId
+	args   []int
+	ret    int
 	/*
 		hl_type **args;
 		hl_type *ret;
@@ -92,7 +72,7 @@ type hlTypeFun struct {
 		// storage for closure
 		hl_type *parent;
 		struct {
-			hl_type_kind kind;
+			hl_type_typeId typeId;
 			void *p;
 		} closure_type;
 		struct {
@@ -104,8 +84,12 @@ type hlTypeFun struct {
 	*/
 }
 
-type hlTypeObj struct {
+type hxTypeObj struct {
+	hxTypeBase
+	typeId      hxitId
+	name        string
 	super       int
+	field       []hlField
 	globalValue int
 	/*
 		int nfields;
@@ -122,15 +106,16 @@ type hlTypeObj struct {
 	*/
 }
 
-type hlTypeType struct {
-}
-
-type hlTypeRef struct {
+type hxTypeRef struct {
+	hxTypeBase
+	typeId hxitId
 	tparam int
 }
 
-type hlTypeVirtual struct {
-	field []hlField
+type hxTypeVirtual struct {
+	hxTypeBase
+	typeId hxitId
+	field  []hlField
 	/*
 		hl_obj_field *fields;
 		int nfields;
@@ -141,14 +126,15 @@ type hlTypeVirtual struct {
 	*/
 }
 
-type hlTypeDynObj struct {
+type hxTypeAbstract struct {
+	hxTypeBase
+	typeId hxitId
+	name   string
 }
 
-type hlTypeAbstract struct {
-	name int
-}
-
-type hlTypeEnum struct {
+type hxTypeEnum struct {
+	hxTypeBase
+	typeId      hxitId
 	name        string
 	nConstructs int
 	globalValue int
@@ -160,11 +146,8 @@ type hlTypeEnum struct {
 	*/
 }
 
-type hlTypeNull struct {
-}
-
 type hlField struct {
-	name   int
-	hash   string
-	hlType int
+	name    string
+	hash    string
+	typeIdx int
 }

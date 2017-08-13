@@ -1,244 +1,241 @@
 package main
 
-type hlOp int
+// HAXE Intermediate Language Operation
+type hxilOp int
 
 const (
-	OMov hlOp = iota
-	OInt
-	OFloat
-	OBool
-	OBytes
-	OString
-	ONull
+	hxilMov hxilOp = iota
+	hxilInt
+	hxilFloat
+	hxilBool
+	hxilBytes
+	hxilString
+	hxilNull
 
-	OAdd
-	OSub
-	OMul
-	OSDiv
-	OUDiv
-	OSMod
-	OUMod
-	OShl
-	OSShr
-	OUShr
-	OAnd
-	OOr
-	OXor
+	hxilAdd
+	hxilSub
+	hxilMul
+	hxilSDiv
+	hxilUDiv
+	hxilSMod
+	hxilUMod
+	hxilShl
+	hxilSShr
+	hxilUShr
+	hxilAnd
+	hxilhxilr
+	hxilXor
 
-	ONeg
-	ONot
-	OIncr
-	ODecr
+	hxilNeg
+	hxilNot
+	hxilIncr
+	hxilDecr
 
-	OCall0
-	OCall1
-	OCall2
-	OCall3
-	OCall4
-	OCallN
-	OCallMethod
-	OCallThis
-	OCallClosure
+	hxilCall0
+	hxilCall1
+	hxilCall2
+	hxilCall3
+	hxilCall4
+	hxilCallN
+	hxilCallMethod
+	hxilCallThis
+	hxilCallClosure
 
-	OStaticClosure
-	OInstanceClosure
-	OVirtualClosure
+	hxilStaticClosure
+	hxilInstanceClosure
+	hxilVirtualClosure
 
-	OGetGlobal
-	OSetGlobal
-	OField
-	OSetField
-	OGetThis
-	OSetThis
-	ODynGet
-	ODynSet
+	hxilGetGlobal
+	hxilSetGlobal
+	hxilField
+	hxilSetField
+	hxilGetThis
+	hxilSetThis
+	hxilDynGet
+	hxilDynSet
 
-	OJTrue
-	OJFalse
-	OJNull
-	OJNotNull
-	OJSLt
-	OJSGte
-	OJSGt
-	OJSLte
-	OJULt
-	OJUGte
-	OJNotLt
-	OJNotGte
-	OJEq
-	OJNotEq
-	OJAlways
+	hxilJTrue
+	hxilJFalse
+	hxilJNull
+	hxilJNotNull
+	hxilJSLt
+	hxilJSGte
+	hxilJSGt
+	hxilJSLte
+	hxilJULt
+	hxilJUGte
+	hxilJNotLt
+	hxilJNotGte
+	hxilJEq
+	hxilJNotEq
+	hxilJAlways
 
-	OToDyn
-	OToSFloat
-	OToUFloat
-	OToInt
-	OSafeCast
-	OUnsafeCast
-	OToVirtual
+	hxilToDyn
+	hxilToSFloat
+	hxilToUFloat
+	hxilToInt
+	hxilSafeCast
+	hxilUnsafeCast
+	hxilToVirtual
 
-	OLabel
-	ORet
-	OThrow
-	ORethrow
-	OSwitch
-	ONullCheck
-	OTrap
-	OEndTrap
+	hxilLabel
+	hxilRet
+	hxilThrow
+	hxilRethrow
+	hxilSwitch
+	hxilNullCheck
+	hxilTrap
+	hxilEndTrap
 
-	OGetI8
-	OGetI16
-	OGetMem
-	OGetArray
-	OSetI8
-	OSetI16
-	OSetMem
-	OSetArray
+	hxilGetI8
+	hxilGetI16
+	hxilGetMem
+	hxilGetArray
+	hxilSetI8
+	hxilSetI16
+	hxilSetMem
+	hxilSetArray
 
-	ONew
-	OArraySize
-	OType
-	OGetType
-	OGetTID
+	hxilNew
+	hxilArraySize
+	hxilType
+	hxilGetType
+	hxilGetTID
 
-	ORef
-	OUnref
-	OSetref
+	hxilRef
+	hxilUnref
+	hxilSetref
 
-	OMakeEnum
-	OEnumAlloc
-	OEnumIndex
-	OEnumField
-	OSetEnumField
+	hxilMakeEnum
+	hxilEnumAlloc
+	hxilEnumIndex
+	hxilEnumField
+	hxilSetEnumField
 
-	OAssert
-	ORefData
-	ORefOffset
-	ONop
-
-	OLast
+	hxilAssert
+	hxilRefData
+	hxilRefhxilffset
+	hxilNop
 )
 
-type hlOpData struct {
+type hxilOpData struct {
 	name string
 	args int
 }
 
 var (
-	hlOpCodes = []hlOpData{
-		OMov:    {"mov", 2},
-		OInt:    {"int", 2},
-		OFloat:  {"float", 2},
-		OBool:   {"bool", 2},
-		OBytes:  {"bytes", 2},
-		OString: {"string", 2},
-		ONull:   {"null", 1},
+	hxilOpCodes = []hxilOpData{
+		hxilMov:    {"mov", 2},
+		hxilInt:    {"int", 2},
+		hxilFloat:  {"float", 2},
+		hxilBool:   {"bool", 2},
+		hxilBytes:  {"bytes", 2},
+		hxilString: {"string", 2},
+		hxilNull:   {"null", 1},
 
-		OAdd:  {"add", 3},
-		OSub:  {"sub", 3},
-		OMul:  {"mul", 3},
-		OSDiv: {"sdiv", 3},
-		OUDiv: {"udiv", 3},
-		OSMod: {"smod", 3},
-		OUMod: {"umod", 3},
-		OShl:  {"shl", 3},
-		OSShr: {"sshr", 3},
-		OUShr: {"ushr", 3},
-		OAnd:  {"and", 3},
-		OOr:   {"or", 3},
-		OXor:  {"xoe", 3},
+		hxilAdd:   {"add", 3},
+		hxilSub:   {"sub", 3},
+		hxilMul:   {"mul", 3},
+		hxilSDiv:  {"sdiv", 3},
+		hxilUDiv:  {"udiv", 3},
+		hxilSMod:  {"smod", 3},
+		hxilUMod:  {"umod", 3},
+		hxilShl:   {"shl", 3},
+		hxilSShr:  {"sshr", 3},
+		hxilUShr:  {"ushr", 3},
+		hxilAnd:   {"and", 3},
+		hxilhxilr: {"or", 3},
+		hxilXor:   {"xoe", 3},
 
-		ONeg:  {"neg", 2},
-		ONot:  {"not", 2},
-		OIncr: {"incr", 1},
-		ODecr: {"decr", 1},
+		hxilNeg:  {"neg", 2},
+		hxilNot:  {"not", 2},
+		hxilIncr: {"incr", 1},
+		hxilDecr: {"decr", 1},
 
-		OCall0:       {"call", 2},
-		OCall1:       {"call", 3},
-		OCall2:       {"call", 4},
-		OCall3:       {"call", 5},
-		OCall4:       {"call", 6},
-		OCallN:       {"call", -1},
-		OCallMethod:  {"callmethod", -1},
-		OCallThis:    {"callthis", -1},
-		OCallClosure: {"callclosure", -1},
+		hxilCall0:       {"call", 2},
+		hxilCall1:       {"call", 3},
+		hxilCall2:       {"call", 4},
+		hxilCall3:       {"call", 5},
+		hxilCall4:       {"call", 6},
+		hxilCallN:       {"call", -1},
+		hxilCallMethod:  {"callmethod", -1},
+		hxilCallThis:    {"callthis", -1},
+		hxilCallClosure: {"callclosure", -1},
 
-		OStaticClosure:   {"OStaticClosure", 2},
-		OInstanceClosure: {"OInstanceClosure", 3},
-		OVirtualClosure:  {"OVirtualClosure", 3},
+		hxilStaticClosure:   {"staticclosure", 2},
+		hxilInstanceClosure: {"instanceclosure", 3},
+		hxilVirtualClosure:  {"virtualclosure", 3},
 
-		OGetGlobal: {"OGetGlobal", 2},
-		OSetGlobal: {"OSetGlobal", 2},
-		OField:     {"OField", 3},
-		OSetField:  {"OSetField", 3},
-		OGetThis:   {"OGetThis", 2},
-		OSetThis:   {"OSetThis", 2},
-		ODynGet:    {"ODynGet", 3},
-		ODynSet:    {"ODynSet", 3},
+		hxilGetGlobal: {"getglobal", 2},
+		hxilSetGlobal: {"setglobal", 2},
+		hxilField:     {"field", 3},
+		hxilSetField:  {"setfield", 3},
+		hxilGetThis:   {"getthis", 2},
+		hxilSetThis:   {"setthis", 2},
+		hxilDynGet:    {"dynget", 3},
+		hxilDynSet:    {"dynset", 3},
 
-		{"OJTrue", 2},
-		{"OJFalse", 2},
-		{"OJNull", 2},
-		{"OJNotNull", 2},
-		{"OJSLt", 3},
-		{"OJSGte", 3},
-		{"OJSGt", 3},
-		{"OJSLte", 3},
-		{"OJULt", 3},
-		{"OJUGte", 3},
-		{"OJNotLt", 3},
-		{"OJNotGte", 3},
-		{"OJEq", 3},
-		{"OJNotEq", 3},
-		{"OJAlways", 1},
+		hxilJTrue:    {"jtrue", 2},
+		hxilJFalse:   {"jfalse", 2},
+		hxilJNull:    {"jnull", 2},
+		hxilJNotNull: {"jnotnull", 2},
+		hxilJSLt:     {"jslt", 3},
+		hxilJSGte:    {"jsgte", 3},
+		hxilJSGt:     {"jsgt", 3},
+		hxilJSLte:    {"jslte", 3},
+		hxilJULt:     {"jult", 3},
+		hxilJUGte:    {"jugte", 3},
+		hxilJNotLt:   {"jnotlt", 3},
+		hxilJNotGte:  {"jnotgte", 3},
+		hxilJEq:      {"jeq", 3},
+		hxilJNotEq:   {"jnoteq", 3},
+		hxilJAlways:  {"jalways", 1},
 
-		{"OToDyn", 2},
-		{"OToSFloat", 2},
-		{"OToUFloat", 2},
-		{"OToInt", 2},
-		{"OSafeCast", 2},
-		{"OUnsafeCast", 2},
-		{"OToVirtual", 2},
+		hxilToDyn:      {"todyn", 2},
+		hxilToSFloat:   {"tosfloat", 2},
+		hxilToUFloat:   {"toufloat", 2},
+		hxilToInt:      {"toint", 2},
+		hxilSafeCast:   {"safecast", 2},
+		hxilUnsafeCast: {"unsafecast", 2},
+		hxilToVirtual:  {"tovirtual", 2},
 
-		{"OLabel", 0},
-		{"ORet", 1},
-		{"OThrow", 1},
-		{"ORethrow", 1},
-		{"OSwitch", -1},
-		{"ONullCheck", 1},
-		{"OTrap", 2},
-		{"OEndTrap", 1},
+		hxilLabel:     {"label", 0},
+		hxilRet:       {"ret", 1},
+		hxilThrow:     {"throw", 1},
+		hxilRethrow:   {"rethrow", 1},
+		hxilSwitch:    {"switch", -1},
+		hxilNullCheck: {"nullcheck", 1},
+		hxilTrap:      {"trap", 2},
+		hxilEndTrap:   {"endtrap", 1},
 
-		{"OGetI8", 3},
-		{"OGetI16", 3},
-		{"OGetMem", 3},
-		{"OGetArray", 3},
-		{"OSetI8", 3},
-		{"OSetI16", 3},
-		{"OSetMem", 3},
-		{"OSetArray", 3},
+		hxilGetI8:    {"geti8", 3},
+		hxilGetI16:   {"geti16", 3},
+		hxilGetMem:   {"getmem", 3},
+		hxilGetArray: {"getarray", 3},
+		hxilSetI8:    {"seti8", 3},
+		hxilSetI16:   {"seti16", 3},
+		hxilSetMem:   {"setmem", 3},
+		hxilSetArray: {"setarray", 3},
 
-		{"ONew", 1},
-		{"OArraySize", 2},
-		{"OType", 2},
-		{"OGetType", 2},
-		{"OGetTID", 2},
+		hxilNew:       {"new", 1},
+		hxilArraySize: {"arraysize", 2},
+		hxilType:      {"type", 2},
+		hxilGetType:   {"gettype", 2},
+		hxilGetTID:    {"gettid", 2},
 
-		{"ORef", 2},
-		{"OUnref", 2},
-		{"OSetref", 2},
+		hxilRef:    {"ref", 2},
+		hxilUnref:  {"unref", 2},
+		hxilSetref: {"setref", 2},
 
-		{"OMakeEnum", -1},
-		{"OEnumAlloc", 2},
-		{"OEnumIndex", 2},
-		{"OEnumField", 4},
-		{"OSetEnumField", 3},
+		hxilMakeEnum:     {"makeenum", -1},
+		hxilEnumAlloc:    {"enumalloc", 2},
+		hxilEnumIndex:    {"enumindex", 2},
+		hxilEnumField:    {"enumfield", 4},
+		hxilSetEnumField: {"setenumfield", 3},
 
-		{"OAssert", 0},
-		{"ORefData", 2},
-		{"ORefOffset", 3},
-		{"ONop", 0},
-
-		{"OLast", 0},
+		hxilAssert:       {"assert", 0},
+		hxilRefData:      {"refdata", 2},
+		hxilRefhxilffset: {"refoffset", 3},
+		hxilNop:          {"nop", 0},
 	}
 )

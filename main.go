@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
 	"os"
 )
@@ -78,10 +77,10 @@ type hlNative struct {
 }
 
 type hlFunction struct {
-	hlType int
-	fIndex int
-	lReg   []int
-	lOp    []byte
+	typeIdx int
+	funIdx  int
+	lReg    []int
+	lOp     []byte
 
 	/*
 		int findex;
@@ -104,7 +103,7 @@ type hldump struct {
 	lFloat      []float64
 	lString     []string
 	lDebugFiles []string
-	lType       []hlType
+	lType       []hxType
 	lGlobal     []int
 	lNative     []hlNative
 	lFunction   []*hlFunction
@@ -140,13 +139,11 @@ func (h *hldump) init(b hlBuf) error {
 	h.lInt = make([]int, nInt)
 	for i := 0; i < nInt; i++ {
 		h.lInt[i] = int(b.int32())
-		//fmt.Printf("Int%d: %d\n", i, h.lInt[i])
 	}
 
 	h.lFloat = make([]float64, nFloat)
 	for i := 0; i < nFloat; i++ {
 		h.lFloat[i] = b.float64()
-		//fmt.Printf("Float%d: %f\n", i, h.lFloat[i])
 	}
 
 	h.lString = make([]string, nString)
@@ -173,7 +170,7 @@ func (h *hldump) init(b hlBuf) error {
 		}
 	}
 
-	h.lType = make([]hlType, nType)
+	h.lType = make([]hxType, nType)
 	for i := 0; i < nType; i++ {
 		//fmt.Printf("%.5d ", i)
 		h.lType[i] = h.readType(&b)
@@ -181,14 +178,14 @@ func (h *hldump) init(b hlBuf) error {
 
 	h.lGlobal = make([]int, nGlobal)
 	for i := 0; i < nGlobal; i++ {
-		h.lGlobal[i] = int(b.index()) // get_type
+		h.lGlobal[i] = int(b.index()) // FIXME: get_type
 	}
 
 	h.lNative = make([]hlNative, nNative)
 	for i := 0; i < nNative; i++ {
 		h.lNative[i].lib = string(b.byte())
 		h.lNative[i].name = string(b.byte())
-		h.lNative[i].t = int(b.index()) // get_type
+		h.lNative[i].t = int(b.index()) // FIXME: get_type
 		h.lNative[i].findex = int(b.index())
 	}
 
@@ -208,14 +205,14 @@ func (h *hldump) HasDebug() bool {
 
 func (h *hldump) readFunction(b *hlBuf) *hlFunction {
 	f := new(hlFunction)
-	f.hlType = b.index() // get_type
-	f.fIndex = b.index()
-	fmt.Printf("New func [%d] %s\n", f.fIndex, h.lString[f.hlType])
+	f.typeIdx = b.index() // FIXME: get_type
+	f.funIdx = b.index()
+	fmt.Printf("New func [%d] %s\n", f.funIdx, h.lType[f.typeIdx].Kind())
 	nReg := b.index()
 	nOp := b.index()
 	f.lReg = make([]int, nReg)
 	for i := 0; i < nReg; i++ {
-		f.lReg[i] = b.index() // get_type
+		f.lReg[i] = b.index() // FIXME: get_type
 	}
 	for i := 0; i < nOp; i++ {
 	}
@@ -236,56 +233,37 @@ func (h *hldump) readFunction(b *hlBuf) *hlFunction {
 	*/
 }
 
-func (h *hldump) readType(b *hlBuf) hlType {
-	kind := hlTypeKind(b.byte())
-	fmt.Printf("> %s\n", kind)
-	switch kind {
-	/*
-		case HVOID:
-		case HUI8:
-		case HUI16:
-		case HI32:
-		case HI64:
-		case HF32:
-		case HF64:
-		case HBOOL:
-		case HBYTES:
-		case HDYN:
-	*/
-	case HFUN:
-		t := new(hlTypeFun)
+func (h *hldump) readType(b *hlBuf) hxType {
+	typeId := hxitId(b.byte())
+	switch typeId {
+	case hxitFun: // FUN
+		t := new(hxTypeFun)
+		t.typeId = typeId
 		nArgs := int(b.byte())
 		t.args = make([]int, nArgs)
 		for i := 0; i < nArgs; i++ {
-			t.args[i] = int(b.index()) // get_type
-			fmt.Printf("Arg%d: %d\n", i, t.args[i])
+			t.args[i] = int(b.index()) // FIXME: get_type
 		}
-		t.ret = int(b.index()) // get_type
-		fmt.Printf("Ret: %d\n", t.ret)
+		t.ret = int(b.index()) // FIXME: get_type
 		return t
-		/*
-			int nargs = READ();
-			t->fun = (hl_type_fun*)hl_malloc(&r->code->alloc,sizeof(hl_type_fun));
-			t->fun->nargs = nargs;
-			t->fun->args = (hl_type**)hl_malloc(&r->code->alloc,sizeof(hl_type*)*nargs);
-			for(i=0;i<nargs;i++)
-			t->fun->args[i] = hl_get_type(r);
-			t->fun->ret = hl_get_type(r);
-		*/
-	case HOBJ:
-		t := new(hlTypeObj)
-		i := int(b.index()) // read_ustring
-		fmt.Printf("Name: %s\n", h.lString[i])
+	case hxitObj: // OBJ TODO
+		t := new(hxTypeObj)
+		t.typeId = typeId
+		t.name = h.lString[int(b.index())] // read_ustring
+		fmt.Printf("Name: %s\n", t.name)
 		// TODO missing name
 		t.super = b.index()
 		t.globalValue = b.index()
 		nField := b.index()
 		nProto := b.index()
 		nBinding := b.index()
+
+		t.field = make([]hlField, nField)
 		for i := 0; i < nField; i++ {
-			name := b.index() // read_ustring
-			b.index()         // get_type
-			fmt.Printf("  Field: %s\n", h.lString[name])
+			t.field[i].name = h.lString[b.index()] // read_ustring
+			//t.field[i].hash = hl_hash_gen(f->name,true)
+			t.field[i].typeIdx = b.index() // FIXME: get_type
+			fmt.Printf("  Field: %s\n", t.field[i].name)
 		}
 		for i := 0; i < nProto; i++ {
 			b.index() // read_ustring
@@ -336,66 +314,42 @@ func (h *hldump) readType(b *hlBuf) hlType {
 				}
 			}
 		*/
-	/*
-		case HARRAY:
-		case HTYPE:
-	*/
-	case HREF:
-		t := new(hlTypeRef)
-		t.tparam = b.index() // get_type
+	case hxitRef: // REF
+		t := new(hxTypeRef)
+		t.typeId = typeId
+		t.tparam = b.index() // FIXME: get_type
 		return t
-		/*
-			t->tparam = hl_get_type(r);
-		*/
-	case HVIRTUAL:
-		t := new(hlTypeVirtual)
+	case hxitVirtual: // VIRTUAL
+		t := new(hxTypeVirtual)
+		t.typeId = typeId
 		nField := b.index()
 		t.field = make([]hlField, nField)
 		for i := 0; i < nField; i++ {
-			t.field[i].name = b.index() // read_ustring
-			//t.field[i].hash = hl_hash_gen(f->name,true)
-			t.field[i].hlType = b.index() // get_type
+			t.field[i].name = h.lString[b.index()] // read_ustring
+			//t.field[i].hash = hl_hash_gen(f->name,true) // TODO
+			t.field[i].typeIdx = b.index() // FIXME: get_type
 		}
 		return t
-		/*
-			{
-				int i;
-				int nfields = UINDEX();
-				t->virt = (hl_type_virtual*)hl_malloc(&r->code->alloc,sizeof(hl_type_virtual));
-				t->virt->nfields = nfields;
-				t->virt->fields = (hl_obj_field*)hl_malloc(&r->code->alloc,sizeof(hl_obj_field)*nfields);
-				for(i=0;i<nfields;i++) {
-					hl_obj_field *f = t->virt->fields + i;
-					f->name = hl_read_ustring(r);
-					f->hashed_name = hl_hash_gen(f->name,true);
-					f->t = hl_get_type(r);
-				}
-			}
-		*/
-	/*
-		case HDYNOBJ:
-	*/
-	case HABSTRACT:
-		t := new(hlTypeAbstract)
-		t.name = b.index() // read_ustring
+	case hxitAbstract: // ABSTRACT
+		t := new(hxTypeAbstract)
+		t.typeId = typeId
+		t.name = h.lString[b.index()] // read_ustring
 		return t
-		/*
-			t->abs_name = hl_read_ustring(r);
-		*/
-	case HENUM:
-		t := new(hlTypeEnum)
-		i := int(b.index()) // read_ustring
-		fmt.Printf("Name: %s\n", h.lString[i])
+	case hxitEnum: // ENUM TODO
+		t := new(hxTypeEnum)
+		t.typeId = typeId
+		t.name = h.lString[int(b.index())] // read_ustring
+		//fmt.Printf("Name: %s\n", h.lString[i])
 		t.globalValue = int(b.index())
 		t.nConstructs = int(b.byte())
-		fmt.Printf("enum: %d, globalValue: %d, numConstructs: %d\n", i, t.globalValue, t.nConstructs)
+		//fmt.Printf("enum: %d, globalValue: %d, numConstructs: %d\n", i, t.globalValue, t.nConstructs)
 		for i := 0; i < t.nConstructs; i++ {
-			name := int(b.index())
+			b.index() // read_ustring
 			nParam := int(b.index())
-			fmt.Printf("Name: %s, Params: %d\n", h.lString[name], nParam)
+			//fmt.Printf("Name: %s, Params: %d\n", h.lString[name], nParam)
 			for j := 0; j < nParam; j++ {
-				ty := int(b.index())
-				fmt.Printf("Type: %d\n", ty)
+				b.index() // FIXME: get_type
+				//fmt.Printf("Type: %d\n", tidx)
 			}
 		}
 		return t
@@ -417,26 +371,35 @@ func (h *hldump) readType(b *hlBuf) hlType {
 			}
 
 		*/
-	/*
-		case HNULL:
-	*/
 	default:
-		if kind >= HLAST {
-			log.Fatal("Unknown type ", kind)
+		if typeId >= hxitLast {
+			log.Fatal("Unknown type ", typeId)
 		}
-		t := new(hlTypeGeneric)
-		t.kind = kind
+		t := new(hxTypeGeneric)
+		t.typeId = typeId
 		return t
 	}
 
 	return nil
 }
 
+func ScanHLB(b []byte) hlBuf {
+	for i := 0; i < len(b); i++ {
+		for j := 0; j < len(hlMagic); j++ {
+			if b[i+j] != hlMagic[j] {
+				break
+			}
+			if j == len(hlMagic)-1 {
+				return hlBuf(b[i:])
+			}
+		}
+	}
+	return nil
+}
+
 func main() {
 	fmt.Printf("HL Dump\n")
-	f, err := os.Open("data/deadcells.exe")
-	f.Seek(369424, io.SeekStart)
-	//f, err := os.Open("data/helloworld.hl")
+	f, err := os.Open("data/helloworld.hl")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -452,13 +415,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	b := ScanHLB(buf)
+	if b == nil {
+		log.Fatal("No Hashlink detected.\n")
+	}
 	dump := new(hldump)
-	dump.init(buf)
-
-	/*
-		fmt.Printf("Version: %d, Flags: %x\n", version, flags)
-		fmt.Printf("Ints: %d, Floats: %d, Strings: %d\n", numInt, numFloat, numString)
-		fmt.Printf("Types: %d, Globals: %d, Natives: %d, Funcs: %d\n", numTypes, numGlobals, numNatives, numFunctions)
-		fmt.Printf("Entry: %d\n", entry)
-	*/
+	err = dump.init(b)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -34,17 +34,17 @@ type hlFunction struct {
 }
 
 type hldump struct {
-	version     int
-	flags       int
-	lInt        []int
-	lFloat      []float64
-	lString     []string
-	lDebugFiles []string
-	lType       []hxType
-	lGlobal     []int
-	lNative     []hlNative
-	lFunction   []*hlFunction
-	entryPoint  int
+	version    int
+	flags      int
+	lInt       []int
+	lFloat     []float64
+	lString    []string
+	lDebugFile []string
+	lType      []hxType
+	lGlobal    []int
+	lNative    []hlNative
+	lFunction  []*hlFunction
+	entryPoint int
 }
 
 func (h *hldump) init(b hlBuf) error {
@@ -94,14 +94,14 @@ func (h *hldump) init(b hlBuf) error {
 	}
 
 	if h.HasDebug() {
-		nDebugFiles := int(b.index())
-		h.lDebugFiles = make([]string, nDebugFiles)
+		nDebugFile := int(b.index())
+		h.lDebugFile = make([]string, nDebugFile)
 		skip := int(b.int32())
 		tmpBuf := b[:skip]
 		b.skip(skip)
-		for i := 0; i < nDebugFiles; i++ {
+		for i := 0; i < nDebugFile; i++ {
 			sz := b.index()
-			h.lDebugFiles[i] = string(tmpBuf[:sz])
+			h.lDebugFile[i] = string(tmpBuf[:sz])
 			tmpBuf = tmpBuf[sz+1:]
 		}
 	}
@@ -128,8 +128,6 @@ func (h *hldump) init(b hlBuf) error {
 	h.lFunction = make([]*hlFunction, nFunction)
 	for i := 0; i < nFunction; i++ {
 		h.lFunction[i] = h.readFunction(&b)
-		if h.HasDebug() {
-		}
 	}
 
 	return nil
@@ -147,18 +145,108 @@ func (h *hldump) HasDebug() bool {
 	return h.flags&1 == 1
 }
 
+func (h *hldump) readOpCode(b *hlBuf) {
+	op := hxilOp(b.byte())
+	if int(op) >= len(hxilOpCodes) {
+		log.Fatal("Bad OP CODE: ", int(op))
+	}
+	fmt.Printf("Opcode: %.1x (%s)\n", op, hxilOpCodes[op].name)
+	switch hxilOpCodes[op].args {
+	case 0:
+	case 1:
+		b.index()
+	case 2:
+		b.index()
+		b.index()
+	case 3:
+		b.index()
+		b.index()
+		b.index()
+	case 4:
+		b.index()
+		b.index()
+		b.index()
+		b.index()
+	case -1:
+		switch op {
+		case hxilCallN, hxilCallClosure, hxilCallMethod,
+			hxilCallThis, hxilMakeEnum:
+			b.index()
+			b.index()
+			i := b.byte()
+			for ; i > 0; i-- {
+				b.index()
+			}
+		case hxilSwitch:
+			b.index()
+			i := b.index()
+			for ; i > 0; i-- {
+				b.index()
+			}
+			b.index()
+		default:
+			log.Fatal("Default op shit!")
+		}
+	default:
+		size := hxilOpCodes[op].args - 3
+		b.index()
+		b.index()
+		b.index()
+		for i := 0; i < size; i++ {
+			b.index()
+		}
+	}
+}
+
+func (h *hldump) readDebugInfo(b *hlBuf, nOp int) {
+	var file int
+	var line int
+	for i := 0; i < nOp; {
+		c := int(b.byte())
+		fmt.Printf("Debug: 0x%.02x\n", c)
+		switch {
+		case (c & 1) == 1:
+			file = ((c << 7) & 0x7f00) + int(b.byte())
+			fmt.Printf("File: %s\n", h.lDebugFile[file])
+		case (c & 2) == 2:
+			delta := c >> 6
+			count := (c >> 2) & 0xf
+			for j := 0; j < count; j++ {
+				fmt.Printf("Op: %d Line: %d\n", i, line)
+				i++
+			}
+			line += delta
+		case (c & 4) == 4:
+			line += c >> 3
+			fmt.Printf("Op: %d Line: %d\n", i, line)
+			i++
+		default:
+			b.byte()
+			b.byte()
+			fmt.Printf("Op: %d Line: %d\n", i, line)
+			i++
+		}
+	}
+}
+
 func (h *hldump) readFunction(b *hlBuf) *hlFunction {
 	f := new(hlFunction)
 	f.typeIdx = h.VerifyType(b.index()) // FIXME: get_type
 	f.funIdx = b.index()
-	fmt.Printf("New func [%d] %s\n", f.funIdx, h.lType[f.typeIdx].Kind())
 	nReg := b.index()
 	nOp := b.index()
+	fmt.Printf("New func [%d] %s (%d,%d)\n", f.funIdx, h.lType[f.typeIdx].Kind(), nReg, nOp)
 	f.lReg = make([]int, nReg)
 	for i := 0; i < nReg; i++ {
 		f.lReg[i] = h.VerifyType(b.index()) // FIXME: get_type
+		fmt.Printf("%d: %s\n", i, h.lType[f.lReg[i]].Kind())
 	}
 	for i := 0; i < nOp; i++ {
+		h.readOpCode(b)
+	}
+
+	if h.HasDebug() {
+		h.readDebugInfo(b, nOp)
 	}
 	return nil
 	/*

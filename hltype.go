@@ -51,20 +51,18 @@ type hxTypeBase struct {
 	typeId hxitId
 }
 
-func (t *hxTypeBase) Kind() string {
-	return string(t.typeId)
+func (t hxTypeBase) Kind() string {
+	return t.typeId.String()
 }
 
 type hxTypeGeneric struct {
 	hxTypeBase
-	typeId hxitId
 }
 
 type hxTypeFun struct {
 	hxTypeBase
-	typeId hxitId
-	args   []int
-	ret    int
+	args []int
+	ret  int
 	/*
 		hl_type **args;
 		hl_type *ret;
@@ -86,7 +84,6 @@ type hxTypeFun struct {
 
 type hxTypeObj struct {
 	hxTypeBase
-	typeId      hxitId
 	name        string
 	super       int
 	field       []hlField
@@ -108,14 +105,12 @@ type hxTypeObj struct {
 
 type hxTypeRef struct {
 	hxTypeBase
-	typeId hxitId
 	tparam int
 }
 
 type hxTypeVirtual struct {
 	hxTypeBase
-	typeId hxitId
-	field  []hlField
+	field []hlField
 	/*
 		hl_obj_field *fields;
 		int nfields;
@@ -128,13 +123,11 @@ type hxTypeVirtual struct {
 
 type hxTypeAbstract struct {
 	hxTypeBase
-	typeId hxitId
-	name   string
+	name string
 }
 
 type hxTypeEnum struct {
 	hxTypeBase
-	typeId      hxitId
 	name        string
 	nConstructs int
 	globalValue int
@@ -144,6 +137,11 @@ type hxTypeEnum struct {
 		hl_enum_construct *constructs;
 		void **global_value;
 	*/
+}
+
+type hxTypeNull struct {
+	hxTypeBase
+	tparam int
 }
 
 type hlField struct {

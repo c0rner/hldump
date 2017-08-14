@@ -1,6 +1,6 @@
 package main
 
-// HAXE Intermediate Language Operation
+// HAXE Intermediate Language Operation Code
 type hxilOp int
 
 const (
@@ -239,3 +239,10 @@ var (
 		hxilNop:          {"nop", 0},
 	}
 )
+
+// Haxe Intermediate Language Instruction
+type hxilInst struct {
+	op    hxilOp
+	arg   [3]int
+	extra []byte
+}

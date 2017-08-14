@@ -243,6 +243,6 @@ var (
 // Haxe Intermediate Language Instruction
 type hxilInst struct {
 	op    hxilOp
-	arg   [3]int
+	arg   []int
 	extra []int
 }

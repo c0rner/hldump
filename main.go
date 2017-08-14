@@ -161,23 +161,13 @@ func readInstruction(b *hlBuf, inst *hxilInst) error {
 	if int(inst.op) >= len(hxilOpCodes) {
 		return ErrBadOpCode
 	}
-	switch hxilOpCodes[inst.op].args {
+
+	nArg := hxilOpCodes[inst.op].args
+	switch nArg {
 	case 0:
-	case 1:
-		inst.arg[0] = b.index()
-	case 2:
-		inst.arg[0] = b.index()
-		inst.arg[1] = b.index()
-	case 3:
-		inst.arg[0] = b.index()
-		inst.arg[1] = b.index()
-		inst.arg[2] = b.index()
-	case 4:
-		inst.arg[0] = b.index()
-		inst.arg[1] = b.index()
-		inst.arg[2] = b.index()
-		inst.extra = append(inst.extra, b.index())
+		return nil
 	case -1:
+		inst.arg = make([]int, 3)
 		switch inst.op {
 		case hxilCallN, hxilCallClosure, hxilCallMethod,
 			hxilCallThis, hxilMakeEnum:
@@ -200,13 +190,9 @@ func readInstruction(b *hlBuf, inst *hxilInst) error {
 			log.Fatal("Not implemented!")
 		}
 	default:
-		size := hxilOpCodes[inst.op].args - 3
-		inst.arg[0] = b.index()
-		inst.arg[1] = b.index()
-		inst.arg[2] = b.index()
-		inst.extra = make([]int, size)
-		for i := 0; i < size; i++ {
-			inst.extra[i] = b.index()
+		inst.arg = make([]int, nArg)
+		for i := 0; i < nArg; i++ {
+			inst.arg[i] = b.index()
 		}
 	}
 	return nil

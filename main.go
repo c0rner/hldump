@@ -66,6 +66,10 @@ func (h *hldump) GetType(i int) hxType {
 	return h.lType[i]
 }
 
+func (h *hldump) HasDebug() bool {
+	return h.flags&1 == 1
+}
+
 func (h *hldump) init(b hlBuf) error {
 	// Verify existence of the magic HLB identifier
 	if hlMagic != string(b[0:3]) {
@@ -152,60 +156,57 @@ func (h *hldump) init(b hlBuf) error {
 	return nil
 }
 
-func (h *hldump) HasDebug() bool {
-	return h.flags&1 == 1
-}
-
 func readInstruction(b *hlBuf, inst *hxilInst) error {
-	op := hxilOp(b.byte())
-	if int(op) >= len(hxilOpCodes) {
-		// BAD OP CODE FIXME ADD ERROR
-		return nil
+	inst.op = hxilOp(b.byte())
+	if int(inst.op) >= len(hxilOpCodes) {
+		return ErrBadOpCode
 	}
-	//fmt.Printf("Opcode: %.1x (%s)\n", op, hxilOpCodes[op].name)
-	switch hxilOpCodes[op].args {
+	switch hxilOpCodes[inst.op].args {
 	case 0:
 	case 1:
-		b.index()
+		inst.arg[0] = b.index()
 	case 2:
-		b.index()
-		b.index()
+		inst.arg[0] = b.index()
+		inst.arg[1] = b.index()
 	case 3:
-		b.index()
-		b.index()
-		b.index()
+		inst.arg[0] = b.index()
+		inst.arg[1] = b.index()
+		inst.arg[2] = b.index()
 	case 4:
-		b.index()
-		b.index()
-		b.index()
-		b.index()
+		inst.arg[0] = b.index()
+		inst.arg[1] = b.index()
+		inst.arg[2] = b.index()
+		inst.extra = append(inst.extra, b.index())
 	case -1:
-		switch op {
+		switch inst.op {
 		case hxilCallN, hxilCallClosure, hxilCallMethod,
 			hxilCallThis, hxilMakeEnum:
-			b.index()
-			b.index()
-			i := b.byte()
-			for ; i > 0; i-- {
-				b.index()
+			inst.arg[0] = b.index()
+			inst.arg[1] = b.index()
+			inst.arg[2] = int(b.byte())
+			inst.extra = make([]int, inst.arg[2])
+			for i := 0; i < inst.arg[2]; i++ {
+				inst.extra[i] = b.index()
 			}
 		case hxilSwitch:
-			b.index()
-			i := b.index()
-			for ; i > 0; i-- {
-				b.index()
+			inst.arg[0] = b.index()
+			inst.arg[1] = b.index()
+			inst.extra = make([]int, inst.arg[1])
+			for i := 0; i < inst.arg[1]; i++ {
+				inst.extra[i] = b.index()
 			}
-			b.index()
+			inst.arg[2] = b.index()
 		default:
 			log.Fatal("Not implemented!")
 		}
 	default:
-		size := hxilOpCodes[op].args - 3
-		b.index()
-		b.index()
-		b.index()
+		size := hxilOpCodes[inst.op].args - 3
+		inst.arg[0] = b.index()
+		inst.arg[1] = b.index()
+		inst.arg[2] = b.index()
+		inst.extra = make([]int, size)
 		for i := 0; i < size; i++ {
-			b.index()
+			inst.extra[i] = b.index()
 		}
 	}
 	return nil
@@ -244,11 +245,10 @@ func readFunction(c hldumper, b *hlBuf) *hlFunction {
 	f.funIdx = b.index()
 	nReg := b.index()
 	nInst := b.index()
-	fmt.Printf("New func [%d] %T (%d,%d)\n", f.funIdx, f.typePtr, nReg, nInst)
+	//fmt.Printf("New func [%d] %T (%d,%d)\n", f.funIdx, f.typePtr, nReg, nInst)
 	f.lReg = make([]hxType, nReg)
 	for i := 0; i < nReg; i++ {
 		f.lReg[i] = c.GetType(b.index())
-		fmt.Printf("%d: %T\n", i, f.lReg[i])
 	}
 	f.lInst = make([]hxilInst, nInst)
 	for i := 0; i < nInst; i++ {

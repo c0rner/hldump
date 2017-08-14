@@ -244,5 +244,5 @@ var (
 type hxilInst struct {
 	op    hxilOp
 	arg   [3]int
-	extra []byte
+	extra []int
 }

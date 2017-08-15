@@ -42,8 +42,9 @@ type hxtDyn struct {
 }
 
 type hxtFun struct {
-	args []hxType
-	ret  hxType
+	arg []hxType
+	ret hxType
+	fun *hlFunction
 	/*
 		hl_type **args;
 		hl_type *ret;
@@ -64,19 +65,21 @@ type hxtFun struct {
 }
 
 func (t *hxtFun) Unmarshal(c hldumper, b *hlBuf) {
-	nArgs := int(b.byte())
-	t.args = make([]hxType, nArgs)
-	for i := 0; i < nArgs; i++ {
-		t.args[i] = c.GetType(b.index())
+	nArg := int(b.byte())
+	t.arg = make([]hxType, nArg)
+	for i := 0; i < nArg; i++ {
+		t.arg[i] = c.GetType(b.index())
 	}
 	t.ret = c.GetType(b.index())
 }
 
 type hxtObj struct {
-	name        string
-	super       int
-	field       []hlField
-	globalValue int
+	name     string
+	super    *hxtObj
+	global   hxType
+	lField   []hlField
+	lProto   []hlProto
+	lBinding []hlBinding
 	/*
 		int nfields;
 		int nproto;
@@ -94,26 +97,32 @@ type hxtObj struct {
 
 func (t *hxtObj) Unmarshal(c hldumper, b *hlBuf) {
 	t.name = c.GetString(b.index())
-	t.super = b.index() // FIXME - NULL super
-	t.globalValue = b.index()
+	super := b.index()
+	t.global = b.index()
 	nField := b.index()
 	nProto := b.index()
 	nBinding := b.index()
 
-	t.field = make([]hlField, nField)
+	if super > 0 {
+		t.super = c.GetType(super).(*hxtObj)
+	}
+
+	t.lField = make([]hlField, nField)
 	for i := 0; i < nField; i++ {
-		t.field[i].name = c.GetString(b.index())
+		t.lField[i].name = c.GetString(b.index())
 		//t.field[i].hash = // TODO Hash name
-		t.field[i].typePtr = c.GetType(b.index())
+		t.lField[i].typePtr = c.GetType(b.index())
 	}
+	t.lProto = make([]hlProto, nProto)
 	for i := 0; i < nProto; i++ {
-		b.index() // read_ustring
-		b.index()
-		b.index()
+		t.lProto[i].name = c.GetString(b.index())
+		t.lProto[i].fIndex = b.index()
+		t.lProto[i].pIndex = b.index()
 	}
+	t.lBinding = make([]hlBinding, nBinding)
 	for i := 0; i < nBinding; i++ {
-		b.index()
-		b.index()
+		t.lBinding[i].index = b.index()
+		t.lBinding[i].fIndex = b.index()
 	}
 }
 
@@ -166,25 +175,21 @@ func (t *hxtAbstract) Unmarshal(c hldumper, b *hlBuf) {
 
 type hxtEnum struct {
 	name        string
-	nConstructs int
+	lConstruct  []hlEnumConstruct
 	globalValue int
-	/*
-		const uchar *name;
-		int nconstructs;
-		hl_enum_construct *constructs;
-		void **global_value;
-	*/
 }
 
 func (t *hxtEnum) Unmarshal(c hldumper, b *hlBuf) {
 	t.name = c.GetString(b.index())
 	t.globalValue = b.index()
-	t.nConstructs = int(b.byte())
-	for i := 0; i < t.nConstructs; i++ { // TODO Fix constructs
-		c.GetString(b.index())
+	nConstruct := int(b.byte())
+	t.lConstruct = make([]hlEnumConstruct, nConstruct)
+	for i := 0; i < nConstruct; i++ {
+		t.lConstruct[i].name = c.GetString(b.index())
 		nParam := b.index()
+		t.lConstruct[i].arg = make([]hxType, nParam)
 		for j := 0; j < nParam; j++ {
-			c.GetType(b.index())
+			t.lConstruct[i].arg[j] = c.GetType(b.index())
 		}
 	}
 }
@@ -248,6 +253,23 @@ func NewHXType(id hxitId) hxType {
 
 type hlField struct {
 	name    string
-	hash    string
+	hash    uint32
 	typePtr hxType
+}
+
+type hlProto struct {
+	name   string
+	hash   uint32
+	fIndex int
+	pIndex int
+}
+
+type hlBinding struct {
+	index  int
+	fIndex int
+}
+
+type hlEnumConstruct struct {
+	name string
+	arg  []hxType
 }

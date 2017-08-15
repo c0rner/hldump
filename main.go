@@ -231,6 +231,9 @@ func readFunction(c hldumper, b *hlBuf) *hlFunction {
 	f.funIdx = b.index()
 	nReg := b.index()
 	nInst := b.index()
+
+	fun := f.typePtr.(*hxtFun)
+	fun.fun = f
 	//fmt.Printf("New func [%d] %T (%d,%d)\n", f.funIdx, f.typePtr, nReg, nInst)
 	f.lReg = make([]hxType, nReg)
 	for i := 0; i < nReg; i++ {

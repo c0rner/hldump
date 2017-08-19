@@ -27,7 +27,7 @@ const (
 	NullTypeId
 )
 
-func (id HdtId) New() hlType {
+func (id HdtId) NewType() hlType {
 	var t hlType
 
 	switch id {
@@ -77,7 +77,6 @@ func (id HdtId) New() hlType {
 }
 
 type hlType interface{}
-type hlString []byte
 
 type VoidType int
 type UI8Type byte
@@ -88,8 +87,7 @@ type F32Type float32
 type F64Type float64
 type BoolType bool
 type BytesType []byte
-type DynType struct {
-}
+type DynType struct{}
 
 type FunType struct {
 	arg []hlType
@@ -123,7 +121,7 @@ func (t *FunType) Unmarshal(ctx *Data, b *hlbStream) {
 }
 
 type ObjType struct {
-	name     hlString
+	nameIdx  int
 	super    int
 	global   int
 	lField   []hlField
@@ -132,7 +130,7 @@ type ObjType struct {
 }
 
 func (t *ObjType) Unmarshal(ctx *Data, b *hlbStream) {
-	t.name = ctx.LookupString(b.index())
+	t.nameIdx = b.index()
 	t.super = b.index()
 	t.global = b.index()
 	nField := b.index()
@@ -141,20 +139,20 @@ func (t *ObjType) Unmarshal(ctx *Data, b *hlbStream) {
 
 	t.lField = make([]hlField, nField)
 	for i := 0; i < nField; i++ {
-		t.lField[i].name = ctx.LookupString(b.index())
+		t.lField[i].nameIdx = b.index()
 		//t.field[i].hash = // TODO Hash name
 		t.lField[i].typePtr = ctx.LookupType(b.index())
 	}
 	t.lProto = make([]hlProto, nProto)
 	for i := 0; i < nProto; i++ {
-		t.lProto[i].name = ctx.LookupString(b.index())
-		t.lProto[i].fIndex = b.index()
-		t.lProto[i].pIndex = b.index()
+		t.lProto[i].nameIdx = b.index()
+		t.lProto[i].funIdx = b.index()
+		t.lProto[i].protoIdx = b.index()
 	}
 	t.lBinding = make([]hlBinding, nBinding)
 	for i := 0; i < nBinding; i++ {
 		t.lBinding[i].index = b.index()
-		t.lBinding[i].fIndex = b.index()
+		t.lBinding[i].funIdx = b.index()
 	}
 }
 
@@ -188,7 +186,7 @@ func (t *VirtualType) Unmarshal(ctx *Data, b *hlbStream) {
 	nField := b.index()
 	t.field = make([]hlField, nField)
 	for i := 0; i < nField; i++ {
-		t.field[i].name = ctx.LookupString(b.index()) // read_ustring
+		t.field[i].nameIdx = b.index()
 		//t.field[i].hash // TODO Generate hash of name
 		t.field[i].typePtr = ctx.LookupType(b.index())
 	}
@@ -198,26 +196,26 @@ type DynObjType struct {
 }
 
 type AbstractType struct {
-	name hlString
+	nameIdx int
 }
 
 func (t *AbstractType) Unmarshal(ctx *Data, b *hlbStream) {
-	t.name = ctx.LookupString(b.index())
+	t.nameIdx = b.index()
 }
 
 type EnumType struct {
-	name        hlString
+	nameIdx     int
 	lConstruct  []hlEnumConstruct
 	globalValue int
 }
 
 func (t *EnumType) Unmarshal(ctx *Data, b *hlbStream) {
-	t.name = ctx.LookupString(b.index())
+	t.nameIdx = b.index()
 	t.globalValue = b.index()
 	nConstruct := int(b.byte())
 	t.lConstruct = make([]hlEnumConstruct, nConstruct)
 	for i := 0; i < nConstruct; i++ {
-		t.lConstruct[i].name = ctx.LookupString(b.index())
+		t.lConstruct[i].nameIdx = b.index()
 		nParam := b.index()
 		t.lConstruct[i].arg = make([]hlType, nParam)
 		for j := 0; j < nParam; j++ {
@@ -235,38 +233,38 @@ func (t *NullType) Unmarshal(ctx *Data, b *hlbStream) {
 }
 
 type hlField struct {
-	name    hlString
+	nameIdx int
 	hash    uint32
 	typePtr hlType
 }
 
 type hlProto struct {
-	name   hlString
-	hash   uint32
-	fIndex int
-	pIndex int
+	nameIdx  int
+	hash     uint32
+	funIdx   int
+	protoIdx int
 }
 
 type hlBinding struct {
 	index  int
-	fIndex int
+	funIdx int
 }
 
 type hlEnumConstruct struct {
-	name hlString
-	arg  []hlType
+	nameIdx int
+	arg     []hlType
 }
 
 type hlNative struct {
-	lib    hlString
-	name   hlString
-	t      hlType
-	findex int
+	libIdx  int
+	nameIdx int
+	t       hlType
+	funIdx  int
 }
 
 type hlFunction struct {
 	typePtr hlType
-	fIndex  int
+	funIdx  int
 	lReg    []hlType
 	lInst   []hxilInst
 }

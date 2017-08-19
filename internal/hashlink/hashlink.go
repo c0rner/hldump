@@ -15,27 +15,95 @@ type Data struct {
 	entryPoint int
 	ints       []int
 	floats     []float64
-	strings    []hlString
+	strings    StringContainer
 	types      []hlType
 	globals    []hlType
 	natives    []*hlNative
 	functions  []*hlFunction
+	funLookup  []int
 	debugFiles []LineFile
 }
 
-func (d *Data) LookupInt(i int) int         { return d.ints[i] }
-func (d *Data) LookupFloat(i int) float64   { return d.floats[i] }
-func (d *Data) LookupString(i int) hlString { return d.strings[i] }
-func (d *Data) LookupType(i int) hlType     { return d.types[i] }
-func (d *Data) LookupGlobal(i int) hlType   { return d.globals[i] }
+func (d *Data) LookupInt(i int) int       { return d.ints[i] }
+func (d *Data) LookupFloat(i int) float64 { return d.floats[i] }
+
+//func (d *Data) LookupString(i int) []byte { return d.strings[i] }
+func (d *Data) LookupType(i int) hlType   { return d.types[i] }
+func (d *Data) LookupGlobal(i int) hlType { return d.globals[i] }
+func (d *Data) LookupFun(i int) int       { return d.funLookup[i] }
 func (d *Data) LookupFunction(i int) *hlFunction {
-	if i > len(d.natives)+len(d.functions) {
-		log.Fatal("Function out of range!")
-	}
 	if i < len(d.functions) {
 		return d.functions[i]
 	}
 	return nil
+}
+func (d *Data) LookupNative(i int) *hlNative {
+	if i < len(d.natives) {
+		fmt.Printf("Native: %d\n", d.natives[i])
+		return d.natives[i]
+	}
+	return nil
+}
+
+func (d *Data) Dump() {
+	for _, t := range d.types {
+		switch t := t.(type) {
+		case *ObjType:
+			var extends = "none"
+			if t.super > 0 {
+				super := d.LookupType(t.super).(*ObjType)
+				extends = d.strings.GoString(super.nameIdx)
+			}
+			fmt.Printf("@%d Class: %s, Global: %d, Extends: %s\n", 0, d.strings.String(t.nameIdx), t.global, extends)
+			fmt.Printf("\t%d fields\n", len(t.lField))
+			for j := range t.lField {
+				fmt.Printf("\t\t@%d %s %T\n", j, d.strings.String(t.lField[j].nameIdx), t.lField[j].typePtr)
+			}
+			fmt.Printf("\t%d methods\n", len(t.lProto))
+			for j := range t.lProto {
+				var fname string
+				idx := d.LookupFun(t.lProto[j].funIdx)
+				if idx < len(d.functions) {
+					fun := d.LookupFunction(idx)
+					fname = fmt.Sprintf("%T", fun)
+				} else {
+					fun := d.LookupNative(idx)
+					fname = d.strings.GoString(fun.libIdx) + "." + d.strings.GoString(fun.nameIdx)
+				}
+
+				//fmt.Printf("\t\t@%d %s fun@%d() %T\n", j, t.lProto[j].name, t.lProto[j].fIndex, fun.typePtr)
+				fmt.Printf("\t\t@%d %s fun@%d() %s\n", j, d.strings.String(t.lProto[j].nameIdx), t.lProto[j].funIdx, fname)
+			}
+			fmt.Printf("\t%d bindings\n", len(t.lBinding))
+			for j := range t.lBinding {
+				fmt.Printf("\t\t@%d %d fun@%d\n", j, t.lBinding[j].funIdx, t.lBinding[j].funIdx)
+			}
+		}
+	}
+}
+
+type hhlString []byte
+
+type StringContainer struct {
+	data  []byte
+	index [][]byte
+}
+
+func (s *StringContainer) Append(b []byte) {
+	s.data = append(s.data, b...)
+	s.index = append(s.index, s.data[len(s.data)-len(b):])
+}
+
+func (s *StringContainer) String(i int) []byte {
+	if i >= len(s.index) {
+		return nil
+	}
+	return s.index[i]
+}
+
+func (s *StringContainer) GoString(i int) string {
+	return string(s.String(i))
+	return string(s.String(i))
 }
 
 type LineFile string
@@ -58,11 +126,12 @@ func NewData(b hlbStream) (*Data, error) {
 	d.flags = Flags(b.index())
 	d.ints = make([]int, b.index())
 	d.floats = make([]float64, b.index())
-	d.strings = make([]hlString, b.index())
+	nStrings := b.index()
 	d.types = make([]hlType, b.index())
 	d.globals = make([]hlType, b.index())
 	d.natives = make([]*hlNative, b.index())
 	d.functions = make([]*hlFunction, b.index())
+	d.funLookup = make([]int, len(d.natives)+len(d.functions))
 	d.entryPoint = b.index()
 
 	for i := range d.ints {
@@ -71,7 +140,7 @@ func NewData(b hlbStream) (*Data, error) {
 
 	fmt.Printf("Version: %d\nFlags: %x\n", d.version, d.flags)
 	fmt.Printf("Ints: %d\nFloats: %d\nStrings: %d\nTypes: %d\nGlobals: %d\nNatives: %d\nFunctions: %d\n",
-		len(d.ints), len(d.floats), len(d.strings), len(d.types), len(d.globals), len(d.natives), len(d.functions))
+		len(d.ints), len(d.floats), nStrings, len(d.types), len(d.globals), len(d.natives), len(d.functions))
 
 	for i := range d.floats {
 		d.floats[i] = b.float64()
@@ -80,9 +149,9 @@ func NewData(b hlbStream) (*Data, error) {
 	skip := int(b.int32())
 	tmpBuf := b[:skip]
 	b.skip(skip)
-	for i := range d.strings {
+	for i := 0; i < nStrings; i++ {
 		sz := b.index()
-		copy(d.strings[i], tmpBuf[:sz])
+		d.strings.Append(tmpBuf[:sz])
 		tmpBuf = tmpBuf[sz+1:]
 	}
 
@@ -109,17 +178,20 @@ func NewData(b hlbStream) (*Data, error) {
 	}
 
 	for i := range d.natives {
-		d.natives[i].lib = d.LookupString(b.index())
-		d.natives[i].name = d.LookupString(b.index())
-		d.natives[i].t = d.LookupType(b.index())
-		d.natives[i].findex = b.index()
-		//fmt.Printf("Lib: %s, %s, %d\n", d.lNative[i].lib, d.lNative[i].name, d.lNative[i].findex)
+		n := new(hlNative)
+		n.libIdx = b.index()
+		n.nameIdx = b.index()
+		n.t = d.LookupType(b.index())
+		n.funIdx = b.index()
+		d.natives[i] = n
+		d.funLookup[n.funIdx] = i + len(d.functions)
+		//fmt.Printf("Lib: %s, %s, %d=%d\n", d.strings.String(n.libIdx), d.strings.String(n.nameIdx), n.funIdx, i+len(d.functions))
 	}
 
 	for i := range d.functions {
-		f := d.functions[i]
+		f := new(hlFunction)
 		f.typePtr = d.LookupType(b.index())
-		f.fIndex = b.index()
+		f.funIdx = b.index()
 		nReg := b.index()
 		nInst := b.index()
 
@@ -136,6 +208,8 @@ func NewData(b hlbStream) (*Data, error) {
 		if d.flags.HasDebug() {
 			readDebugInfo(&b, nInst) // Use lInst?
 		}
+		d.functions[i] = f
+		d.funLookup[f.funIdx] = i
 	}
 
 	return d, nil
@@ -143,7 +217,7 @@ func NewData(b hlbStream) (*Data, error) {
 
 func readType(ctx *Data, b *hlbStream) hlType {
 	typeId := HdtId(b.byte())
-	t := typeId.New()
+	t := typeId.NewType()
 	if t == nil {
 		log.Fatalf("Unknown type: %d\n", typeId)
 	}

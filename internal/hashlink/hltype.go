@@ -4,94 +4,94 @@ package hashlink
 //go:generate stringer -type=Id
 type HdtId int
 
+const (
+	VoidTypeId HdtId = iota
+	UI8TypeId
+	UI16TypeId
+	I32TypeId
+	I64TypeId
+	F32TypeId
+	F64TypeId
+	BoolTypeId
+	BytesTypeId
+	DynTypeId
+	FunTypeId
+	ObjTypeId
+	ArrayTypeId
+	TypeTypeId
+	RefTypeId
+	VirtualTypeId
+	DynObjTypeId
+	AbstractTypeId
+	EnumTypeId
+	NullTypeId
+)
+
 func (id HdtId) New() hlType {
 	var t hlType
 
 	switch id {
-	case VoidType:
-		t = new(hxtVoid)
-	case UI8Type:
-		t = new(hxtUI8)
-	case UI16Type:
-		t = new(hxtUI16)
-	case I32Type:
-		t = new(hxtI32)
-	case I64Type:
-		t = new(hxtI64)
-	case F32Type:
-		t = new(hxtF32)
-	case F64Type:
-		t = new(hxtF64)
-	case BoolType:
-		t = new(hxtBool)
-	case BytesType:
-		t = new(hxtBytes)
-	case DynType:
-		t = new(hxtDyn)
-	case FunType:
-		t = new(hxtFun)
-	case ObjType:
-		t = new(hxtObj)
-	case ArrayType:
-		t = new(hxtArray)
-	case TypeType:
-		t = new(hxtType)
-	case RefType:
-		t = new(hxtRef)
-	case VirtualType:
-		t = new(hxtVirtual)
-	case DynObjType:
-		t = new(hxtDynObj)
-	case AbstractType:
-		t = new(hxtAbstract)
-	case EnumType:
-		t = new(hxtEnum)
-	case NullType:
-		t = new(hxtNull)
+	case VoidTypeId:
+		t = new(VoidType)
+	case UI8TypeId:
+		t = new(UI8Type)
+	case UI16TypeId:
+		t = new(UI16Type)
+	case I32TypeId:
+		t = new(I32Type)
+	case I64TypeId:
+		t = new(I64Type)
+	case F32TypeId:
+		t = new(F32Type)
+	case F64TypeId:
+		t = new(F64Type)
+	case BoolTypeId:
+		t = new(BoolType)
+	case BytesTypeId:
+		t = new(BytesType)
+	case DynTypeId:
+		t = new(DynType)
+	case FunTypeId:
+		t = new(FunType)
+	case ObjTypeId:
+		t = new(ObjType)
+	case ArrayTypeId:
+		t = new(ArrayType)
+	case TypeTypeId:
+		t = new(TypeType)
+	case RefTypeId:
+		t = new(RefType)
+	case VirtualTypeId:
+		t = new(VirtualType)
+	case DynObjTypeId:
+		t = new(DynObjType)
+	case AbstractTypeId:
+		t = new(AbstractType)
+	case EnumTypeId:
+		t = new(EnumType)
+	case NullTypeId:
+		t = new(NullType)
 	}
 
 	return t
 }
 
-const (
-	VoidType HdtId = iota
-	UI8Type
-	UI16Type
-	I32Type
-	I64Type
-	F32Type
-	F64Type
-	BoolType
-	BytesType
-	DynType
-	FunType
-	ObjType
-	ArrayType
-	TypeType
-	RefType
-	VirtualType
-	DynObjType
-	AbstractType
-	EnumType
-	NullType
-)
-
 type hlType interface{}
 type hlString []byte
 
-type hxtVoid int
-type hxtUI8 byte
-type hxtUI16 uint16
-type hxtI32 int32
-type hxtI64 int64
-type hxtF32 float32
-type hxtF64 float64
-type hxtBool bool
-type hxtBytes []byte
-type hxtDyn struct {
+type VoidType int
+type UI8Type byte
+type UI16Type uint16
+type I32Type int32
+type I64Type int64
+type F32Type float32
+type F64Type float64
+type BoolType bool
+type BytesType []byte
+type DynType struct {
 }
 
-type hxtFun struct {
+type FunType struct {
 	arg []hlType
 	ret hlType
 	/*
@@ -113,7 +113,7 @@ type hxtFun struct {
 	*/
 }
 
-func (t *hxtFun) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *FunType) Unmarshal(ctx *Data, b *hlbStream) {
 	nArg := int(b.byte())
 	t.arg = make([]hlType, nArg)
 	for i := 0; i < nArg; i++ {
@@ -122,7 +122,7 @@ func (t *hxtFun) Unmarshal(ctx *Data, b *hlbStream) {
 	t.ret = ctx.LookupType(b.index())
 }
 
-type hxtObj struct {
+type ObjType struct {
 	name     hlString
 	super    int
 	global   int
@@ -131,7 +131,7 @@ type hxtObj struct {
 	lBinding []hlBinding
 }
 
-func (t *hxtObj) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *ObjType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.name = ctx.LookupString(b.index())
 	t.super = b.index()
 	t.global = b.index()
@@ -158,21 +158,21 @@ func (t *hxtObj) Unmarshal(ctx *Data, b *hlbStream) {
 	}
 }
 
-type hxtArray struct {
+type ArrayType struct {
 }
 
-type hxtType struct {
+type TypeType struct {
 }
 
-type hxtRef struct {
+type RefType struct {
 	tparam hlType
 }
 
-func (t *hxtRef) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *RefType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.tparam = ctx.LookupType(b.index())
 }
 
-type hxtVirtual struct {
+type VirtualType struct {
 	field []hlField
 	/*
 		hl_obj_field *fields;
@@ -184,7 +184,7 @@ type hxtVirtual struct {
 	*/
 }
 
-func (t *hxtVirtual) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *VirtualType) Unmarshal(ctx *Data, b *hlbStream) {
 	nField := b.index()
 	t.field = make([]hlField, nField)
 	for i := 0; i < nField; i++ {
@@ -194,24 +194,24 @@ func (t *hxtVirtual) Unmarshal(ctx *Data, b *hlbStream) {
 	}
 }
 
-type hxtDynObj struct {
+type DynObjType struct {
 }
 
-type hxtAbstract struct {
+type AbstractType struct {
 	name hlString
 }
 
-func (t *hxtAbstract) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *AbstractType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.name = ctx.LookupString(b.index())
 }
 
-type hxtEnum struct {
+type EnumType struct {
 	name        hlString
 	lConstruct  []hlEnumConstruct
 	globalValue int
 }
 
-func (t *hxtEnum) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *EnumType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.name = ctx.LookupString(b.index())
 	t.globalValue = b.index()
 	nConstruct := int(b.byte())
@@ -226,11 +226,11 @@ func (t *hxtEnum) Unmarshal(ctx *Data, b *hlbStream) {
 	}
 }
 
-type hxtNull struct {
+type NullType struct {
 	tparam hlType
 }
 
-func (t *hxtNull) Unmarshal(ctx *Data, b *hlbStream) {
+func (t *NullType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.tparam = ctx.LookupType(b.index())
 }
 

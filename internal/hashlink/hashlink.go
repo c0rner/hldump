@@ -149,32 +149,32 @@ func readType(ctx *Data, b *hlbStream) hlType {
 	}
 
 	switch t := t.(type) {
-	//case *hxtVoid:
-	//case *hxtUI8:
-	//case *hxtUI16:
-	//case *hxtI32:
-	//case *hxtI64:
-	//case *hxtF32:
-	//case *hxtF64:
-	//case *hxtBool:
-	//case *hxtBytes:
-	//case *hxtDyn:
-	case *hxtFun:
+	//case *VoidType:
+	//case *UI8Type:
+	//case *UI16Type:
+	//case *I32Type:
+	//case *I64Type:
+	//case *F32Type:
+	//case *F64Type:
+	//case *BoolType:
+	//case *BytesType:
+	//case *DynType:
+	case *FunType:
 		t.Unmarshal(ctx, b)
-	case *hxtObj:
+	case *ObjType:
 		t.Unmarshal(ctx, b)
-	//case *hxtArray:
-	//case *hxtType:
-	case *hxtRef:
+	//case *ArrayType:
+	//case *TypeType:
+	case *RefType:
 		t.Unmarshal(ctx, b)
-	case *hxtVirtual:
+	case *VirtualType:
 		t.Unmarshal(ctx, b)
-	//case *hxtDynObj:
-	case *hxtAbstract:
+	//case *DynObjType:
+	case *AbstractType:
 		t.Unmarshal(ctx, b)
-	case *hxtEnum:
+	case *EnumType:
 		t.Unmarshal(ctx, b)
-	case *hxtNull:
+	case *NullType:
 		t.Unmarshal(ctx, b)
 	default:
 	}

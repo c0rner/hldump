@@ -1,25 +1,28 @@
-package main
+package hashlink
 
 import (
 	"encoding/binary"
 )
 
-type hlBuf []byte
+// Hashlink Byte Stream
+type hlbStream []byte
 
-func (b *hlBuf) skip(i int) {
+// Skip will advance the stream ptr by i bytes
+func (b *hlbStream) skip(i int) {
 	if i > len(*b) {
 		i = len(*b)
 	}
 	*b = (*b)[i:]
 }
 
-func (b *hlBuf) byte() byte {
+// byte returns the next available byte and advances stream ptr
+func (b *hlbStream) byte() byte {
 	res := (*b)[0]
 	*b = (*b)[1:]
 	return res
 }
 
-func (b *hlBuf) int32() int32 {
+func (b *hlbStream) int32() int32 {
 	res := int32(binary.LittleEndian.Uint32(*b))
 	*b = (*b)[4:]
 	return res
@@ -28,7 +31,7 @@ func (b *hlBuf) int32() int32 {
 // Inconclusive how doubles are handled by Hashlib
 // For reference see hl_read_double()
 // https://github.com/HaxeFoundation/hashlink/blob/master/src/code.c
-func (b *hlBuf) float64() float64 {
+func (b *hlbStream) float64() float64 {
 	var res float64
 	// FIXME
 	*b = (*b)[8:]
@@ -38,7 +41,7 @@ func (b *hlBuf) float64() float64 {
 // The index type is encoded to store integers
 // in 1,2 or 4 bytes.  The encoding requires
 // the data to be read in big endian notation.
-func (b *hlBuf) index() int {
+func (b *hlbStream) index() int {
 	var i int
 	c := (*b)[0]
 

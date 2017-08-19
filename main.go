@@ -6,299 +6,18 @@ import (
 	"os"
 )
 
-type hlNative struct {
-	lib    string
-	name   string
-	t      hxType
-	findex int
-}
+import (
+	hl "github.com/c0rner/hldump/internal/hashlink"
+)
 
-type hlFunction struct {
-	typePtr hxType
-	funIdx  int
-	lReg    []hxType
-	lInst   []hxilInst
-
-	/*
-		int findex;
-		int nregs;
-		int nops;
-		hl_type *type;
-		hl_type **regs;
-		hl_opcode *ops;
-		int *debug;
-
-		hl_type_obj *obj;
-		const uchar *field;
-	*/
-}
-type hldumper interface {
-	GetType(int) hxType
-	GetString(int) string
-	HasDebug() bool
-}
-
-type hldump struct {
-	version    int
-	flags      int
-	lInt       []int
-	lFloat     []float64
-	lString    []string
-	lDebugFile []string
-	lType      []hxType
-	lGlobal    []hxType
-	lNative    []hlNative
-	lFunction  []*hlFunction
-	entryPoint int
-}
-
-func (h *hldump) GetString(i int) string {
-	if i < 0 || i > len(h.lString) {
-		return ""
-	}
-	return h.lString[i]
-}
-
-func (h *hldump) GetType(i int) hxType {
-	if i < 0 || i > len(h.lType) {
-		return nil
-	}
-	return h.lType[i]
-}
-
-func (h *hldump) HasDebug() bool {
-	return h.flags&1 == 1
-}
-
-func (h *hldump) init(b hlBuf) error {
-	// Verify existence of the magic HLB identifier
-	if hlMagic != string(b[0:3]) {
-		return ErrNotValidHLB
-	}
-	b.skip(len(hlMagic))
-
-	// Bail on fast on unsupported HLB version
-	h.version = int(b.byte())
-	if h.version != 2 {
-		return ErrUnsupported
-	}
-
-	h.flags = b.index()
-	nInt := b.index()
-	nFloat := b.index()
-	nString := b.index()
-	nType := b.index()
-	nGlobal := b.index()
-	nNative := b.index()
-	nFunction := b.index()
-	h.entryPoint = b.index()
-
-	fmt.Printf("Version: %d\nFlags: %x\n", h.version, h.flags)
-	fmt.Printf("Ints: %d\nFloats: %d\nStrings: %d\nTypes: %d\nGlobals: %d\nNatives: %d\nFunctions: %d\n", nInt, nFloat, nString, nType, nGlobal, nNative, nFunction)
-
-	h.lInt = make([]int, nInt)
-	for i := 0; i < nInt; i++ {
-		h.lInt[i] = int(b.int32())
-	}
-
-	h.lFloat = make([]float64, nFloat)
-	for i := 0; i < nFloat; i++ {
-		h.lFloat[i] = b.float64()
-	}
-
-	h.lString = make([]string, nString)
-	skip := int(b.int32())
-	tmpBuf := b[:skip]
-	b.skip(skip)
-	for i := 0; i < nString; i++ {
-		sz := b.index()
-		h.lString[i] = string(tmpBuf[:sz])
-		tmpBuf = tmpBuf[sz+1:]
-	}
-
-	if h.HasDebug() {
-		nDebugFile := b.index()
-		h.lDebugFile = make([]string, nDebugFile)
-		skip := int(b.int32())
-		tmpBuf := b[:skip]
-		b.skip(skip)
-		for i := 0; i < nDebugFile; i++ {
-			sz := b.index()
-			h.lDebugFile[i] = string(tmpBuf[:sz])
-			tmpBuf = tmpBuf[sz+1:]
-		}
-	}
-
-	h.lType = make([]hxType, nType)
-	for i := 0; i < nType; i++ {
-		h.lType[i] = readType(h, &b)
-	}
-
-	h.lGlobal = make([]hxType, nGlobal)
-	for i := 0; i < nGlobal; i++ {
-		h.lGlobal[i] = h.GetType(b.index())
-	}
-
-	h.lNative = make([]hlNative, nNative)
-	for i := 0; i < nNative; i++ {
-		h.lNative[i].lib = h.GetString(b.index())
-		h.lNative[i].name = h.GetString(b.index())
-		h.lNative[i].t = h.GetType(b.index())
-		h.lNative[i].findex = b.index()
-		//fmt.Printf("Lib: %s, %s, %d\n", h.lNative[i].lib, h.lNative[i].name, h.lNative[i].findex)
-	}
-
-	h.lFunction = make([]*hlFunction, nFunction)
-	for i := 0; i < nFunction; i++ {
-		h.lFunction[i] = readFunction(h, &b)
-	}
-
-	return nil
-}
-
-func readInstruction(b *hlBuf, inst *hxilInst) error {
-	inst.op = hxilOp(b.byte())
-	if int(inst.op) >= len(hxilOpCodes) {
-		return ErrBadOpCode
-	}
-
-	nArg := hxilOpCodes[inst.op].args
-	switch nArg {
-	case 0:
-		return nil
-	case -1:
-		inst.arg = make([]int, 3)
-		switch inst.op {
-		case hxilCallN, hxilCallClosure, hxilCallMethod,
-			hxilCallThis, hxilMakeEnum:
-			inst.arg[0] = b.index()
-			inst.arg[1] = b.index()
-			inst.arg[2] = int(b.byte())
-			inst.extra = make([]int, inst.arg[2])
-			for i := 0; i < inst.arg[2]; i++ {
-				inst.extra[i] = b.index()
-			}
-		case hxilSwitch:
-			inst.arg[0] = b.index()
-			inst.arg[1] = b.index()
-			inst.extra = make([]int, inst.arg[1])
-			for i := 0; i < inst.arg[1]; i++ {
-				inst.extra[i] = b.index()
-			}
-			inst.arg[2] = b.index()
-		default:
-			log.Fatal("Not implemented!")
-		}
-	default:
-		inst.arg = make([]int, nArg)
-		for i := 0; i < nArg; i++ {
-			inst.arg[i] = b.index()
-		}
-	}
-	return nil
-}
-
-func readDebugInfo(b *hlBuf, nOp int) {
-	//var file int
-	var line int
-	for i := 0; i < nOp; {
-		c := int(b.byte())
-		switch {
-		case (c & 1) == 1:
-			//file = ((c << 7) & 0x7f00) + int(b.byte())
-			b.byte()
-		case (c & 2) == 2:
-			delta := c >> 6
-			count := (c >> 2) & 0xf
-			for j := 0; j < count; j++ {
-				i++
-			}
-			line += delta
-		case (c & 4) == 4:
-			line += c >> 3
-			i++
-		default:
-			b.byte()
-			b.byte()
-			i++
-		}
-	}
-}
-
-func readFunction(c hldumper, b *hlBuf) *hlFunction {
-	f := new(hlFunction)
-	f.typePtr = c.GetType(b.index())
-	f.funIdx = b.index()
-	nReg := b.index()
-	nInst := b.index()
-
-	fun := f.typePtr.(*hxtFun)
-	fun.fun = f
-	//fmt.Printf("New func [%d] %T (%d,%d)\n", f.funIdx, f.typePtr, nReg, nInst)
-	f.lReg = make([]hxType, nReg)
-	for i := 0; i < nReg; i++ {
-		f.lReg[i] = c.GetType(b.index())
-	}
-	f.lInst = make([]hxilInst, nInst)
-	for i := 0; i < nInst; i++ {
-		readInstruction(b, &f.lInst[i])
-	}
-
-	if c.HasDebug() {
-		readDebugInfo(b, nInst) // Use lInst?
-	}
-	return nil
-}
-
-func readType(c hldumper, b *hlBuf) hxType {
-	typeId := hxitId(b.byte())
-	t := NewHXType(typeId)
-	if t == nil {
-		log.Fatalf("Unknown type: %d\n", typeId)
-	}
-
-	switch t := t.(type) {
-	//case *hxtVoid:
-	//case *hxtUI8:
-	//case *hxtUI16:
-	//case *hxtI32:
-	//case *hxtI64:
-	//case *hxtF32:
-	//case *hxtF64:
-	//case *hxtBool:
-	//case *hxtBytes:
-	//case *hxtDyn:
-	case *hxtFun:
-		t.Unmarshal(c, b)
-	case *hxtObj:
-		t.Unmarshal(c, b)
-	//case *hxtArray:
-	//case *hxtType:
-	case *hxtRef:
-		t.Unmarshal(c, b)
-	case *hxtVirtual:
-		t.Unmarshal(c, b)
-	//case *hxtDynObj:
-	case *hxtAbstract:
-		t.Unmarshal(c, b)
-	case *hxtEnum:
-		t.Unmarshal(c, b)
-	case *hxtNull:
-		t.Unmarshal(c, b)
-	default:
-	}
-
-	return t
-}
-
-func ScanHLB(b []byte) hlBuf {
+func FindHLB(b []byte) []byte {
 	for i := 0; i < len(b); i++ {
-		for j := 0; j < len(hlMagic); j++ {
-			if b[i+j] != hlMagic[j] {
+		for j := 0; j < len(hl.Magic); j++ {
+			if b[i+j] != hl.Magic[j] {
 				break
 			}
-			if j == len(hlMagic)-1 {
-				return hlBuf(b[i:])
+			if j == len(hl.Magic)-1 {
+				return b[i:]
 			}
 		}
 	}
@@ -307,7 +26,8 @@ func ScanHLB(b []byte) hlBuf {
 
 func main() {
 	fmt.Printf("HL Dump\n")
-	f, err := os.Open("data/helloworld.hl")
+
+	f, err := os.Open("data/deadcells.exe")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -323,13 +43,32 @@ func main() {
 		log.Fatal(err)
 	}
 
-	b := ScanHLB(buf)
-	if b == nil {
-		log.Fatal("No Hashlink detected.\n")
-	}
-	dump := new(hldump)
-	err = dump.init(b)
+	hlb, err := hl.NewData(FindHLB(buf))
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	for i, t := range hlb.Types {
+		switch t := t.(type) {
+		case *hxtObj:
+			var extends string = "none"
+			//if t.super != nil {
+			//	extends = *t.super.name
+			//}
+			fmt.Printf("@%d Class: %s, Global: %d, Extends: %s\n", i, string(t.name), t.global, extends)
+			fmt.Printf("\t%d fields\n", len(t.lField))
+			for j := range t.lField {
+				fmt.Printf("\t\t@%d %s %T\n", j, t.lField[j].name, t.lField[j].typePtr)
+			}
+			fmt.Printf("\t%d methods\n", len(t.lProto))
+			for j := range t.lProto {
+				fun := hlb.GetFunction(t.lProto[j].fIndex)
+				fmt.Printf("\t\t@%d %s fun@%d() %T\n", j, t.lProto[j].name, t.lProto[j].fIndex, fun.typePtr)
+			}
+			fmt.Printf("\t%d bindings\n", len(t.lBinding))
+			for j := range t.lBinding {
+				fmt.Printf("\t\t@%d %d fun@%d\n", j, t.lBinding[j].index, t.lBinding[j].fIndex)
+			}
+		}
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package hashlink
 
 // HAXE Intermediate Language Operation Code
 type hxilOp int
@@ -246,3 +246,33 @@ type hxilInst struct {
 	arg   []int
 	extra []int
 }
+
+/*
+func (o *hxilInst) Print(c *Hlstate) {
+	switch o.op {
+	case hxilCall0:
+		tgt := c.getType(o.arg[1])
+		fmt.Printf("%s ", hxilOpCodes[o.op].name)
+		fmt.Printf("%d,f@%x ; %T", o.arg[0], o.arg[1], tgt)
+		switch tgt := tgt.(type) {
+		case *hxtObj:
+			fmt.Printf(".%s()", tgt.name)
+		}
+		fmt.Println()
+	case hxilString:
+		fmt.Printf("%s ", hxilOpCodes[o.op].name)
+		fmt.Printf("%d,@%d ; \"%.20s\"", o.arg[0], o.arg[1], c.getString(o.arg[1]))
+		fmt.Println()
+	case hxilSetField:
+		fmt.Printf("%s ", hxilOpCodes[o.op].name)
+		tgt := c.getType(o.arg[0])
+		switch tgt := tgt.(type) {
+		case *hxtObj:
+			fmt.Printf("%s.%d, %d ; (%d)", tgt.name, o.arg[1], o.arg[2], len(tgt.lField))
+		default:
+			fmt.Printf("%T", tgt)
+		}
+		fmt.Println()
+	}
+}
+*/

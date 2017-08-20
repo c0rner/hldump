@@ -122,8 +122,11 @@ func (t *FunType) Unmarshal(ctx *Data, b *hlbStream) {
 
 type ObjType struct {
 	nameIdx  int
-	super    int
+	namePtr  []byte
+	superIdx int
+	superPtr *ObjType
 	global   int
+	offset   int
 	lField   []hlField
 	lProto   []hlProto
 	lBinding []hlBinding
@@ -131,28 +134,34 @@ type ObjType struct {
 
 func (t *ObjType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.nameIdx = b.index()
-	t.super = b.index()
+	t.superIdx = b.index()
 	t.global = b.index()
 	nField := b.index()
 	nProto := b.index()
 	nBinding := b.index()
 
+	if t.superIdx > 0 {
+		super := ctx.LookupType(t.superIdx).(*ObjType)
+		t.offset = super.offset + len(super.lField)
+		t.offset += len(t.lField)
+	}
+
 	t.lField = make([]hlField, nField)
 	for i := 0; i < nField; i++ {
 		t.lField[i].nameIdx = b.index()
 		//t.field[i].hash = // TODO Hash name
-		t.lField[i].typePtr = ctx.LookupType(b.index())
+		t.lField[i].typeIdx = b.index()
 	}
 	t.lProto = make([]hlProto, nProto)
 	for i := 0; i < nProto; i++ {
 		t.lProto[i].nameIdx = b.index()
-		t.lProto[i].funIdx = b.index()
+		t.lProto[i].funcIdx = b.index()
 		t.lProto[i].protoIdx = b.index()
 	}
 	t.lBinding = make([]hlBinding, nBinding)
 	for i := 0; i < nBinding; i++ {
-		t.lBinding[i].index = b.index()
-		t.lBinding[i].funIdx = b.index()
+		t.lBinding[i].fldIdx = b.index()
+		t.lBinding[i].metIdx = b.index()
 	}
 }
 
@@ -188,7 +197,7 @@ func (t *VirtualType) Unmarshal(ctx *Data, b *hlbStream) {
 	for i := 0; i < nField; i++ {
 		t.field[i].nameIdx = b.index()
 		//t.field[i].hash // TODO Generate hash of name
-		t.field[i].typePtr = ctx.LookupType(b.index())
+		t.field[i].typeIdx = b.index()
 	}
 }
 
@@ -197,6 +206,7 @@ type DynObjType struct {
 
 type AbstractType struct {
 	nameIdx int
+	namePtr []byte
 }
 
 func (t *AbstractType) Unmarshal(ctx *Data, b *hlbStream) {
@@ -205,6 +215,7 @@ func (t *AbstractType) Unmarshal(ctx *Data, b *hlbStream) {
 
 type EnumType struct {
 	nameIdx     int
+	namePtr     []byte
 	lConstruct  []hlEnumConstruct
 	globalValue int
 }
@@ -234,39 +245,58 @@ func (t *NullType) Unmarshal(ctx *Data, b *hlbStream) {
 
 type hlField struct {
 	nameIdx int
+	namePtr int
 	hash    uint32
-	typePtr hlType
+	typeIdx int
+	typePtr int
 }
 
 type hlProto struct {
 	nameIdx  int
+	namePtr  int
 	hash     uint32
-	funIdx   int
+	funcIdx  int
+	funcPtr  int
 	protoIdx int
+	protoPtr int
 }
 
 type hlBinding struct {
-	index  int
-	funIdx int
+	fldIdx int
+	fldPtr int
+	metIdx int
+	metPtr int
 }
 
 type hlEnumConstruct struct {
 	nameIdx int
+	namePtr int
 	arg     []hlType
 }
 
+type Function interface{}
+
 type hlNative struct {
 	libIdx  int
+	libPtr  int
 	nameIdx int
-	t       hlType
-	funIdx  int
+	namePtr int
+	typeIdx int
+	typePtr int
+	funcIdx int
+	funcPtr int
 }
 
 type hlFunction struct {
-	typePtr hlType
-	funIdx  int
-	lReg    []hlType
-	lInst   []hxilInst
+	typeIdx  int
+	typePtr  int
+	funcIdx  int
+	funcPtr  int
+	lReg     []hlType
+	lInst    []hxilInst
+	obj      hlType
+	fieldIdx int
+	fieldPtr int
 }
 
 type Flags int

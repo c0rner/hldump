@@ -27,7 +27,7 @@ func FindHLB(b []byte) []byte {
 func main() {
 	fmt.Printf("HL Dump\n")
 
-	f, err := os.Open("data/deadcells.exe")
+	f, err := os.Open("data/helloworld.hl")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,6 +48,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	hlb.Resolve()
 	hlb.Dump()
 
 	/*

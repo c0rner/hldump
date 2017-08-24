@@ -1,97 +1,123 @@
 package hashlink
 
-// Hashlink Data Type
-//go:generate stringer -type=Id
-type HdtId int
-
-const (
-	VoidTypeId HdtId = iota
-	UI8TypeId
-	UI16TypeId
-	I32TypeId
-	I64TypeId
-	F32TypeId
-	F64TypeId
-	BoolTypeId
-	BytesTypeId
-	DynTypeId
-	FunTypeId
-	ObjTypeId
-	ArrayTypeId
-	TypeTypeId
-	RefTypeId
-	VirtualTypeId
-	DynObjTypeId
-	AbstractTypeId
-	EnumTypeId
-	NullTypeId
-)
-
 func (id HdtId) NewType() hlType {
 	var t hlType
 
 	switch id {
-	case VoidTypeId:
+	case VoidT:
 		t = new(VoidType)
-	case UI8TypeId:
+	case UI8T:
 		t = new(UI8Type)
-	case UI16TypeId:
+	case UI16T:
 		t = new(UI16Type)
-	case I32TypeId:
+	case I32T:
 		t = new(I32Type)
-	case I64TypeId:
+	case I64T:
 		t = new(I64Type)
-	case F32TypeId:
+	case F32T:
 		t = new(F32Type)
-	case F64TypeId:
+	case F64T:
 		t = new(F64Type)
-	case BoolTypeId:
+	case BoolT:
 		t = new(BoolType)
-	case BytesTypeId:
+	case BytesT:
 		t = new(BytesType)
-	case DynTypeId:
+	case DynT:
 		t = new(DynType)
-	case FunTypeId:
+	case FunT:
 		t = new(FunType)
-	case ObjTypeId:
+	case ObjT:
 		t = new(ObjType)
-	case ArrayTypeId:
+	case ArrayT:
 		t = new(ArrayType)
-	case TypeTypeId:
+	case TypeT:
 		t = new(TypeType)
-	case RefTypeId:
+	case RefT:
 		t = new(RefType)
-	case VirtualTypeId:
+	case VirtualT:
 		t = new(VirtualType)
-	case DynObjTypeId:
+	case DynObjT:
 		t = new(DynObjType)
-	case AbstractTypeId:
+	case AbstractT:
 		t = new(AbstractType)
-	case EnumTypeId:
+	case EnumT:
 		t = new(EnumType)
-	case NullTypeId:
+	case NullT:
 		t = new(NullType)
 	}
 
 	return t
 }
 
-type hlType interface{}
+type hlType interface {
+	Id() HdtId
+}
 
 type VoidType int
+
+func (t *VoidType) Id() HdtId {
+	return VoidT
+}
+
 type UI8Type byte
+
+func (t *UI8Type) Id() HdtId {
+	return UI8T
+}
+
 type UI16Type uint16
+
+func (t *UI16Type) Id() HdtId {
+	return UI16T
+}
+
 type I32Type int32
+
+func (t *I32Type) Id() HdtId {
+	return I32T
+}
+
 type I64Type int64
+
+func (t *I64Type) Id() HdtId {
+	return I64T
+}
+
 type F32Type float32
+
+func (t *F32Type) Id() HdtId {
+	return F32T
+}
+
 type F64Type float64
+
+func (t *F64Type) Id() HdtId {
+	return F64T
+}
+
 type BoolType bool
+
+func (t *BoolType) Id() HdtId {
+	return BoolT
+}
+
 type BytesType []byte
+
+func (t *BytesType) Id() HdtId {
+	return BytesT
+}
+
 type DynType struct{}
 
+func (t *DynType) Id() HdtId {
+	return DynT
+}
+
 type FunType struct {
-	arg []hlType
-	ret hlType
+	argIdx []int
+	retIdx int
+	argPtr []hlType
+	retPtr hlType
 	/*
 		hl_type **args;
 		hl_type *ret;
@@ -111,13 +137,17 @@ type FunType struct {
 	*/
 }
 
+func (t *FunType) Id() HdtId {
+	return FunT
+}
+
 func (t *FunType) Unmarshal(ctx *Data, b *hlbStream) {
 	nArg := int(b.byte())
-	t.arg = make([]hlType, nArg)
+	t.argIdx = make([]int, nArg)
 	for i := 0; i < nArg; i++ {
-		t.arg[i] = ctx.LookupType(b.index())
+		t.argIdx[i] = b.index()
 	}
-	t.ret = ctx.LookupType(b.index())
+	t.retIdx = b.index()
 }
 
 type ObjType struct {
@@ -130,6 +160,10 @@ type ObjType struct {
 	lField   []hlField
 	lProto   []hlProto
 	lBinding []hlBinding
+}
+
+func (t *ObjType) Id() HdtId {
+	return ObjT
 }
 
 func (t *ObjType) Unmarshal(ctx *Data, b *hlbStream) {
@@ -156,27 +190,39 @@ func (t *ObjType) Unmarshal(ctx *Data, b *hlbStream) {
 	for i := 0; i < nProto; i++ {
 		t.lProto[i].nameIdx = b.index()
 		t.lProto[i].funcIdx = b.index()
-		t.lProto[i].protoIdx = b.index()
+		t.lProto[i].override = b.index()
 	}
 	t.lBinding = make([]hlBinding, nBinding)
 	for i := 0; i < nBinding; i++ {
 		t.lBinding[i].fldIdx = b.index()
-		t.lBinding[i].metIdx = b.index()
+		t.lBinding[i].funcIdx = b.index()
 	}
 }
 
 type ArrayType struct {
 }
 
+func (t *ArrayType) Id() HdtId {
+	return ArrayT
+}
+
 type TypeType struct {
 }
 
+func (t *TypeType) Id() HdtId {
+	return TypeT
+}
+
 type RefType struct {
-	tparam hlType
+	paramIdx int
+}
+
+func (t *RefType) Id() HdtId {
+	return RefT
 }
 
 func (t *RefType) Unmarshal(ctx *Data, b *hlbStream) {
-	t.tparam = ctx.LookupType(b.index())
+	t.paramIdx = b.index()
 }
 
 type VirtualType struct {
@@ -189,6 +235,10 @@ type VirtualType struct {
 		int *indexes;
 		hl_field_lookup *lookup;
 	*/
+}
+
+func (t *VirtualType) Id() HdtId {
+	return VirtualT
 }
 
 func (t *VirtualType) Unmarshal(ctx *Data, b *hlbStream) {
@@ -204,9 +254,17 @@ func (t *VirtualType) Unmarshal(ctx *Data, b *hlbStream) {
 type DynObjType struct {
 }
 
+func (t *DynObjType) Id() HdtId {
+	return DynObjT
+}
+
 type AbstractType struct {
 	nameIdx int
 	namePtr []byte
+}
+
+func (t *AbstractType) Id() HdtId {
+	return AbstractT
 }
 
 func (t *AbstractType) Unmarshal(ctx *Data, b *hlbStream) {
@@ -220,6 +278,10 @@ type EnumType struct {
 	globalValue int
 }
 
+func (t *EnumType) Id() HdtId {
+	return EnumT
+}
+
 func (t *EnumType) Unmarshal(ctx *Data, b *hlbStream) {
 	t.nameIdx = b.index()
 	t.globalValue = b.index()
@@ -228,19 +290,23 @@ func (t *EnumType) Unmarshal(ctx *Data, b *hlbStream) {
 	for i := 0; i < nConstruct; i++ {
 		t.lConstruct[i].nameIdx = b.index()
 		nParam := b.index()
-		t.lConstruct[i].arg = make([]hlType, nParam)
+		t.lConstruct[i].argIdx = make([]int, nParam)
 		for j := 0; j < nParam; j++ {
-			t.lConstruct[i].arg[j] = ctx.LookupType(b.index())
+			t.lConstruct[i].argIdx[j] = b.index()
 		}
 	}
 }
 
 type NullType struct {
-	tparam hlType
+	paramIdx int
+}
+
+func (t *NullType) Id() HdtId {
+	return NullT
 }
 
 func (t *NullType) Unmarshal(ctx *Data, b *hlbStream) {
-	t.tparam = ctx.LookupType(b.index())
+	t.paramIdx = b.index()
 }
 
 type hlField struct {
@@ -257,30 +323,29 @@ type hlProto struct {
 	hash     uint32
 	funcIdx  int
 	funcPtr  int
-	protoIdx int
-	protoPtr int
+	override int
 }
 
 type hlBinding struct {
-	fldIdx int
-	fldPtr int
-	metIdx int
-	metPtr int
+	fldIdx  int
+	fldPtr  int
+	funcIdx int
+	funcPtr int
 }
 
 type hlEnumConstruct struct {
 	nameIdx int
 	namePtr int
-	arg     []hlType
+	argIdx  []int
 }
 
 type Function interface{}
 
 type hlNative struct {
 	libIdx  int
-	libPtr  int
+	libPtr  string
 	nameIdx int
-	namePtr int
+	namePtr string
 	typeIdx int
 	typePtr int
 	funcIdx int
@@ -288,15 +353,14 @@ type hlNative struct {
 }
 
 type hlFunction struct {
-	typeIdx  int
-	typePtr  int
-	funcIdx  int
-	funcPtr  int
-	lReg     []hlType
-	lInst    []hxilInst
-	obj      hlType
-	fieldIdx int
-	fieldPtr int
+	typeIdx int
+	typePtr int
+	funcIdx int
+	funcPtr int
+	regIdx  []int
+	inst    []HilInst
+	obj     hlType
+	field   []byte
 }
 
 type Flags int

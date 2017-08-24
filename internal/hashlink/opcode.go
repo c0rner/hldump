@@ -1,278 +1,330 @@
 package hashlink
 
-// HAXE Intermediate Language Operation Code
-type hxilOp int
-
-const (
-	hxilMov hxilOp = iota
-	hxilInt
-	hxilFloat
-	hxilBool
-	hxilBytes
-	hxilString
-	hxilNull
-
-	hxilAdd
-	hxilSub
-	hxilMul
-	hxilSDiv
-	hxilUDiv
-	hxilSMod
-	hxilUMod
-	hxilShl
-	hxilSShr
-	hxilUShr
-	hxilAnd
-	hxilhxilr
-	hxilXor
-
-	hxilNeg
-	hxilNot
-	hxilIncr
-	hxilDecr
-
-	hxilCall0
-	hxilCall1
-	hxilCall2
-	hxilCall3
-	hxilCall4
-	hxilCallN
-	hxilCallMethod
-	hxilCallThis
-	hxilCallClosure
-
-	hxilStaticClosure
-	hxilInstanceClosure
-	hxilVirtualClosure
-
-	hxilGetGlobal
-	hxilSetGlobal
-	hxilField
-	hxilSetField
-	hxilGetThis
-	hxilSetThis
-	hxilDynGet
-	hxilDynSet
-
-	hxilJTrue
-	hxilJFalse
-	hxilJNull
-	hxilJNotNull
-	hxilJSLt
-	hxilJSGte
-	hxilJSGt
-	hxilJSLte
-	hxilJULt
-	hxilJUGte
-	hxilJNotLt
-	hxilJNotGte
-	hxilJEq
-	hxilJNotEq
-	hxilJAlways
-
-	hxilToDyn
-	hxilToSFloat
-	hxilToUFloat
-	hxilToInt
-	hxilSafeCast
-	hxilUnsafeCast
-	hxilToVirtual
-
-	hxilLabel
-	hxilRet
-	hxilThrow
-	hxilRethrow
-	hxilSwitch
-	hxilNullCheck
-	hxilTrap
-	hxilEndTrap
-
-	hxilGetI8
-	hxilGetI16
-	hxilGetMem
-	hxilGetArray
-	hxilSetI8
-	hxilSetI16
-	hxilSetMem
-	hxilSetArray
-
-	hxilNew
-	hxilArraySize
-	hxilType
-	hxilGetType
-	hxilGetTID
-
-	hxilRef
-	hxilUnref
-	hxilSetref
-
-	hxilMakeEnum
-	hxilEnumAlloc
-	hxilEnumIndex
-	hxilEnumField
-	hxilSetEnumField
-
-	hxilAssert
-	hxilRefData
-	hxilRefhxilffset
-	hxilNop
+import (
+	"fmt"
 )
 
-type hxilOpData struct {
+// HAXE Intermediate Language Operation Code
+type HilOp int
+
+const (
+	OpMov HilOp = iota
+	OpInt
+	OpFloat
+	OpBool
+	OpBytes
+	OpString
+	OpNull
+
+	OpAdd
+	OpSub
+	OpMul
+	OpSDiv
+	OpUDiv
+	OpSMod
+	OpUMod
+	OpShl
+	OpSShr
+	OpUShr
+	OpAnd
+	Opr
+	OpXor
+
+	OpNeg
+	OpNot
+	OpIncr
+	OpDecr
+
+	OpCall0
+	OpCall1
+	OpCall2
+	OpCall3
+	OpCall4
+	OpCallN
+	OpCallMethod
+	OpCallThis
+	OpCallClosure
+
+	OpStaticClosure
+	OpInstanceClosure
+	OpVirtualClosure
+
+	OpGetGlobal
+	OpSetGlobal
+	OpField
+	OpSetField
+	OpGetThis
+	OpSetThis
+	OpDynGet
+	OpDynSet
+
+	OpJTrue
+	OpJFalse
+	OpJNull
+	OpJNotNull
+	OpJSLt
+	OpJSGte
+	OpJSGt
+	OpJSLte
+	OpJULt
+	OpJUGte
+	OpJNotLt
+	OpJNotGte
+	OpJEq
+	OpJNotEq
+	OpJAlways
+
+	OpToDyn
+	OpToSFloat
+	OpToUFloat
+	OpToInt
+	OpSafeCast
+	OpUnsafeCast
+	OpToVirtual
+
+	OpLabel
+	OpRet
+	OpThrow
+	OpRethrow
+	OpSwitch
+	OpNullCheck
+	OpTrap
+	OpEndTrap
+
+	OpGetI8
+	OpGetI16
+	OpGetMem
+	OpGetArray
+	OpSetI8
+	OpSetI16
+	OpSetMem
+	OpSetArray
+
+	OpNew
+	OpArraySize
+	OpType
+	OpGetType
+	OpGetTID
+
+	OpRef
+	OpUnref
+	OpSetref
+
+	OpMakeEnum
+	OpEnumAlloc
+	OpEnumIndex
+	OpEnumField
+	OpSetEnumField
+
+	OpAssert
+	OpRefData
+	OpRefOpffset
+	OpNop
+)
+
+type OpData struct {
 	name string
 	args int
 }
 
 var (
-	hxilOpCodes = []hxilOpData{
-		hxilMov:    {"mov", 2},
-		hxilInt:    {"int", 2},
-		hxilFloat:  {"float", 2},
-		hxilBool:   {"bool", 2},
-		hxilBytes:  {"bytes", 2},
-		hxilString: {"string", 2},
-		hxilNull:   {"null", 1},
+	OpCodes = []OpData{
+		OpMov:    {"mov", 2},
+		OpInt:    {"int", 2},
+		OpFloat:  {"float", 2},
+		OpBool:   {"bool", 2},
+		OpBytes:  {"bytes", 2},
+		OpString: {"string", 2},
+		OpNull:   {"null", 1},
 
-		hxilAdd:   {"add", 3},
-		hxilSub:   {"sub", 3},
-		hxilMul:   {"mul", 3},
-		hxilSDiv:  {"sdiv", 3},
-		hxilUDiv:  {"udiv", 3},
-		hxilSMod:  {"smod", 3},
-		hxilUMod:  {"umod", 3},
-		hxilShl:   {"shl", 3},
-		hxilSShr:  {"sshr", 3},
-		hxilUShr:  {"ushr", 3},
-		hxilAnd:   {"and", 3},
-		hxilhxilr: {"or", 3},
-		hxilXor:   {"xoe", 3},
+		OpAdd:  {"add", 3},
+		OpSub:  {"sub", 3},
+		OpMul:  {"mul", 3},
+		OpSDiv: {"sdiv", 3},
+		OpUDiv: {"udiv", 3},
+		OpSMod: {"smod", 3},
+		OpUMod: {"umod", 3},
+		OpShl:  {"shl", 3},
+		OpSShr: {"sshr", 3},
+		OpUShr: {"ushr", 3},
+		OpAnd:  {"and", 3},
+		Opr:    {"or", 3},
+		OpXor:  {"xoe", 3},
 
-		hxilNeg:  {"neg", 2},
-		hxilNot:  {"not", 2},
-		hxilIncr: {"incr", 1},
-		hxilDecr: {"decr", 1},
+		OpNeg:  {"neg", 2},
+		OpNot:  {"not", 2},
+		OpIncr: {"incr", 1},
+		OpDecr: {"decr", 1},
 
-		hxilCall0:       {"call", 2},
-		hxilCall1:       {"call", 3},
-		hxilCall2:       {"call", 4},
-		hxilCall3:       {"call", 5},
-		hxilCall4:       {"call", 6},
-		hxilCallN:       {"call", -1},
-		hxilCallMethod:  {"callmethod", -1},
-		hxilCallThis:    {"callthis", -1},
-		hxilCallClosure: {"callclosure", -1},
+		OpCall0:       {"call", 2},
+		OpCall1:       {"call", 3},
+		OpCall2:       {"call", 4},
+		OpCall3:       {"call", 5},
+		OpCall4:       {"call", 6},
+		OpCallN:       {"call", -1},
+		OpCallMethod:  {"callmethod", -1},
+		OpCallThis:    {"callthis", -1},
+		OpCallClosure: {"callclosure", -1},
 
-		hxilStaticClosure:   {"staticclosure", 2},
-		hxilInstanceClosure: {"instanceclosure", 3},
-		hxilVirtualClosure:  {"virtualclosure", 3},
+		OpStaticClosure:   {"staticclosure", 2},
+		OpInstanceClosure: {"instanceclosure", 3},
+		OpVirtualClosure:  {"virtualclosure", 3},
 
-		hxilGetGlobal: {"getglobal", 2},
-		hxilSetGlobal: {"setglobal", 2},
-		hxilField:     {"field", 3},
-		hxilSetField:  {"setfield", 3},
-		hxilGetThis:   {"getthis", 2},
-		hxilSetThis:   {"setthis", 2},
-		hxilDynGet:    {"dynget", 3},
-		hxilDynSet:    {"dynset", 3},
+		OpGetGlobal: {"getglobal", 2},
+		OpSetGlobal: {"setglobal", 2},
+		OpField:     {"field", 3},
+		OpSetField:  {"setfield", 3},
+		OpGetThis:   {"getthis", 2},
+		OpSetThis:   {"setthis", 2},
+		OpDynGet:    {"dynget", 3},
+		OpDynSet:    {"dynset", 3},
 
-		hxilJTrue:    {"jtrue", 2},
-		hxilJFalse:   {"jfalse", 2},
-		hxilJNull:    {"jnull", 2},
-		hxilJNotNull: {"jnotnull", 2},
-		hxilJSLt:     {"jslt", 3},
-		hxilJSGte:    {"jsgte", 3},
-		hxilJSGt:     {"jsgt", 3},
-		hxilJSLte:    {"jslte", 3},
-		hxilJULt:     {"jult", 3},
-		hxilJUGte:    {"jugte", 3},
-		hxilJNotLt:   {"jnotlt", 3},
-		hxilJNotGte:  {"jnotgte", 3},
-		hxilJEq:      {"jeq", 3},
-		hxilJNotEq:   {"jnoteq", 3},
-		hxilJAlways:  {"jalways", 1},
+		OpJTrue:    {"jtrue", 2},
+		OpJFalse:   {"jfalse", 2},
+		OpJNull:    {"jnull", 2},
+		OpJNotNull: {"jnotnull", 2},
+		OpJSLt:     {"jslt", 3},
+		OpJSGte:    {"jsgte", 3},
+		OpJSGt:     {"jsgt", 3},
+		OpJSLte:    {"jslte", 3},
+		OpJULt:     {"jult", 3},
+		OpJUGte:    {"jugte", 3},
+		OpJNotLt:   {"jnotlt", 3},
+		OpJNotGte:  {"jnotgte", 3},
+		OpJEq:      {"jeq", 3},
+		OpJNotEq:   {"jnoteq", 3},
+		OpJAlways:  {"jalways", 1},
 
-		hxilToDyn:      {"todyn", 2},
-		hxilToSFloat:   {"tosfloat", 2},
-		hxilToUFloat:   {"toufloat", 2},
-		hxilToInt:      {"toint", 2},
-		hxilSafeCast:   {"safecast", 2},
-		hxilUnsafeCast: {"unsafecast", 2},
-		hxilToVirtual:  {"tovirtual", 2},
+		OpToDyn:      {"todyn", 2},
+		OpToSFloat:   {"tosfloat", 2},
+		OpToUFloat:   {"toufloat", 2},
+		OpToInt:      {"toint", 2},
+		OpSafeCast:   {"safecast", 2},
+		OpUnsafeCast: {"unsafecast", 2},
+		OpToVirtual:  {"tovirtual", 2},
 
-		hxilLabel:     {"label", 0},
-		hxilRet:       {"ret", 1},
-		hxilThrow:     {"throw", 1},
-		hxilRethrow:   {"rethrow", 1},
-		hxilSwitch:    {"switch", -1},
-		hxilNullCheck: {"nullcheck", 1},
-		hxilTrap:      {"trap", 2},
-		hxilEndTrap:   {"endtrap", 1},
+		OpLabel:     {"label", 0},
+		OpRet:       {"ret", 1},
+		OpThrow:     {"throw", 1},
+		OpRethrow:   {"rethrow", 1},
+		OpSwitch:    {"switch", -1},
+		OpNullCheck: {"nullcheck", 1},
+		OpTrap:      {"trap", 2},
+		OpEndTrap:   {"endtrap", 1},
 
-		hxilGetI8:    {"geti8", 3},
-		hxilGetI16:   {"geti16", 3},
-		hxilGetMem:   {"getmem", 3},
-		hxilGetArray: {"getarray", 3},
-		hxilSetI8:    {"seti8", 3},
-		hxilSetI16:   {"seti16", 3},
-		hxilSetMem:   {"setmem", 3},
-		hxilSetArray: {"setarray", 3},
+		OpGetI8:    {"geti8", 3},
+		OpGetI16:   {"geti16", 3},
+		OpGetMem:   {"getmem", 3},
+		OpGetArray: {"getarray", 3},
+		OpSetI8:    {"seti8", 3},
+		OpSetI16:   {"seti16", 3},
+		OpSetMem:   {"setmem", 3},
+		OpSetArray: {"setarray", 3},
 
-		hxilNew:       {"new", 1},
-		hxilArraySize: {"arraysize", 2},
-		hxilType:      {"type", 2},
-		hxilGetType:   {"gettype", 2},
-		hxilGetTID:    {"gettid", 2},
+		OpNew:       {"new", 1},
+		OpArraySize: {"arraysize", 2},
+		OpType:      {"type", 2},
+		OpGetType:   {"gettype", 2},
+		OpGetTID:    {"gettid", 2},
 
-		hxilRef:    {"ref", 2},
-		hxilUnref:  {"unref", 2},
-		hxilSetref: {"setref", 2},
+		OpRef:    {"ref", 2},
+		OpUnref:  {"unref", 2},
+		OpSetref: {"setref", 2},
 
-		hxilMakeEnum:     {"makeenum", -1},
-		hxilEnumAlloc:    {"enumalloc", 2},
-		hxilEnumIndex:    {"enumindex", 2},
-		hxilEnumField:    {"enumfield", 4},
-		hxilSetEnumField: {"setenumfield", 3},
+		OpMakeEnum:     {"makeenum", -1},
+		OpEnumAlloc:    {"enumalloc", 2},
+		OpEnumIndex:    {"enumindex", 2},
+		OpEnumField:    {"enumfield", 4},
+		OpSetEnumField: {"setenumfield", 3},
 
-		hxilAssert:       {"assert", 0},
-		hxilRefData:      {"refdata", 2},
-		hxilRefhxilffset: {"refoffset", 3},
-		hxilNop:          {"nop", 0},
+		OpAssert:     {"assert", 0},
+		OpRefData:    {"refdata", 2},
+		OpRefOpffset: {"refoffset", 3},
+		OpNop:        {"nop", 0},
 	}
 )
 
 // Haxe Intermediate Language Instruction
-type hxilInst struct {
-	op    hxilOp
+type HilInst struct {
+	op    HilOp
 	arg   []int
 	extra []int
 }
 
-/*
-func (o *hxilInst) Print(c *Hlstate) {
+func (o *HilInst) Print(ctx *Data) {
 	switch o.op {
-	case hxilCall0:
-		tgt := c.getType(o.arg[1])
-		fmt.Printf("%s ", hxilOpCodes[o.op].name)
-		fmt.Printf("%d,f@%x ; %T", o.arg[0], o.arg[1], tgt)
+	case OpInt:
+		fmt.Printf("%s %d, %d ; ", OpCodes[o.op].name, o.arg[0], o.arg[1])
+		fmt.Printf("%d, %d\n", ctx.ints[o.arg[0]], ctx.ints[o.arg[1]])
+	case OpField:
+		fmt.Printf("%s %d, %d[%d] ; \n", OpCodes[o.op].name, o.arg[0], o.arg[1], o.arg[2])
+	case OpJTrue, OpJFalse, OpJNull, OpJNotNull:
+		fmt.Printf("%s %d, %d\n", OpCodes[o.op].name, o.arg[0], o.arg[1])
+	case OpJEq, OpJNotEq, OpSwitch:
+		fmt.Printf("%s %d, %d, %d\n", OpCodes[o.op].name, o.arg[0], o.arg[1], o.arg[2])
+	case OpJAlways:
+		fmt.Printf("%s %d\n", OpCodes[o.op].name, o.arg[0])
+	case OpCall0:
+		tgt := ctx.LookupFunction(o.arg[1])
+		fmt.Printf("%s ", OpCodes[o.op].name)
+		fmt.Printf("%d,f@%d ; ", o.arg[0], o.arg[1])
 		switch tgt := tgt.(type) {
-		case *hxtObj:
-			fmt.Printf(".%s()", tgt.name)
+		case *hlNative:
+			fmt.Printf(".%s.%s", tgt.libPtr, tgt.namePtr)
+		case *hlFunction:
+			fmt.Printf(".%s()", tgt.field)
 		}
 		fmt.Println()
-	case hxilString:
-		fmt.Printf("%s ", hxilOpCodes[o.op].name)
-		fmt.Printf("%d,@%d ; \"%.20s\"", o.arg[0], o.arg[1], c.getString(o.arg[1]))
-		fmt.Println()
-	case hxilSetField:
-		fmt.Printf("%s ", hxilOpCodes[o.op].name)
-		tgt := c.getType(o.arg[0])
+	case OpCall1:
+		tgt := ctx.LookupFunction(o.arg[1])
+		fmt.Printf("%s ", OpCodes[o.op].name)
+		fmt.Printf("%d,f@%d(%d) ; ", o.arg[0], o.arg[1], o.arg[2])
 		switch tgt := tgt.(type) {
-		case *hxtObj:
-			fmt.Printf("%s.%d, %d ; (%d)", tgt.name, o.arg[1], o.arg[2], len(tgt.lField))
-		default:
-			fmt.Printf("%T", tgt)
+		case *hlNative:
+			fmt.Printf(".%s.%s", tgt.libPtr, tgt.namePtr)
+		case *hlFunction:
+			fmt.Printf(".%s()", tgt.field)
 		}
+		fmt.Println()
+	case OpCall2:
+		tgt := ctx.LookupFunction(o.arg[1])
+		fmt.Printf("%s ", OpCodes[o.op].name)
+		fmt.Printf("%d,f@%d(%d, %d) ; ", o.arg[0], o.arg[1], o.arg[2], o.arg[3])
+		switch tgt := tgt.(type) {
+		case *hlNative:
+			fmt.Printf(".%s.%s", tgt.libPtr, tgt.namePtr)
+		case *hlFunction:
+			fmt.Printf(".%s()", tgt.field)
+		}
+		fmt.Println()
+	case OpCall3:
+		tgt := ctx.LookupFunction(o.arg[1])
+		fmt.Printf("%s ", OpCodes[o.op].name)
+		fmt.Printf("%d,f@%d(%d, %d, %d) ; ", o.arg[0], o.arg[1], o.arg[2], o.arg[3], o.arg[4])
+		switch tgt := tgt.(type) {
+		case *hlNative:
+			fmt.Printf(".%s.%s", tgt.libPtr, tgt.namePtr)
+		case *hlFunction:
+			if tgt.obj != nil {
+				ooo := tgt.obj.(*ObjType)
+				fmt.Printf("%s.%s()", ooo.namePtr, tgt.field)
+			}
+		}
+		fmt.Println()
+	case OpString:
+		fmt.Printf("%s ", OpCodes[o.op].name)
+		fmt.Printf("%d,@%d ; \"%.40s\"", o.arg[0], o.arg[1], ctx.strings.String(o.arg[1]))
+		fmt.Println()
+		/*
+			case OpSetField:
+				fmt.Printf("%s ", OpCodes[o.op].name)
+				tgt := ctx.getType(o.arg[0])
+				switch tgt := tgt.(type) {
+				case *hxtObj:
+					fmt.Printf("%s.%d, %d ; (%d)", tgt.name, o.arg[1], o.arg[2], len(tgt.lField))
+		*/
+	default:
+		fmt.Printf("%s", OpCodes[o.op].name)
 		fmt.Println()
 	}
 }
-*/
